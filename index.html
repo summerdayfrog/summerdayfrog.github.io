@@ -148,6 +148,16 @@ a.cover:hover .play, a.cover:focus-visible .play { background: var(--accent-stro
 .reader .full .sec { font-size: 13px; margin-top: 18px; }
 .reader .full .sec:first-child { margin-top: 0; }
 .reader-empty { margin: 0; color: var(--muted); }
+/* 카테고리별 추가 항목 */
+.extra-fields { display: grid; gap: 14px; }
+.extra-fields:empty { display: none; }
+.extra-fields textarea { min-height: 80px; }
+.card .extras { margin: 0; font-size: 13px; color: var(--muted); overflow-wrap: anywhere; }
+.card .extras b { font-weight: 600; color: var(--ink); margin-right: 4px; }
+.reader-extra { margin: 0; display: grid; grid-template-columns: max-content 1fr; gap: 6px 16px; font-size: 15px; }
+.reader-extra dt { font-weight: 600; color: var(--accent-strong); font-size: 13px; padding-top: 2px; }
+.reader-extra dd { margin: 0; white-space: pre-wrap; overflow-wrap: anywhere; min-width: 0; }
+@media (max-width: 480px) { .reader-extra { grid-template-columns: 1fr; gap: 2px; } .reader-extra dd { margin-bottom: 8px; } }
 .reader .actions { padding-top: 6px; border-top: 1px solid var(--line); padding-top: 16px; }
 .reader a.btn { text-decoration: none; }
 @media (max-width: 560px) {
@@ -333,6 +343,7 @@ body.locked .tally, body.locked .bar, body.locked #grid, body.locked #emptySlot,
       <span class="lbl">세부 분류</span>
       <div class="subselects" id="fSubs"></div>
     </div>
+    <div class="extra-fields" id="fExtra"></div>
     <label class="check" for="fFav"><input type="checkbox" id="fFav"> ★ 즐겨찾기에 넣기</label>
     <div class="field">
       <label for="fOne">한줄평</label>
@@ -340,7 +351,7 @@ body.locked .tally, body.locked .bar, body.locked #grid, body.locked #emptySlot,
     </div>
     <div class="field">
       <div class="lblrow">
-        <label for="fBody">후기</label>
+        <label for="fBody" id="fBodyLabel">후기</label>
         <button type="button" class="textbtn" id="tplBtn" hidden>양식 넣기</button>
       </div>
       <textarea id="fBody" placeholder="기억에 남는 장면, 배운 것, 떠오른 생각…"></textarea>
@@ -426,6 +437,26 @@ body.locked .tally, body.locked .bar, body.locked #grid, body.locked #emptySlot,
   function headingTest() {
     var set = templateLines();
     return function (line) { return /^■/.test(line) || set[String(line).trim()] === true; };
+  }
+  /* 카테고리별 추가 항목: reviews.js 에서 "fields": [{ "id": "cast", "label": "출연" }, ...] 로 적는다.
+     양식과 같이 가장 깊은 단계에 있는 것을 쓴다. type: text(기본) / long(여러 줄) / number / date */
+  function nodeSetting(id, path, key) {
+    var steps = walk(id, path);
+    for (var i = steps.length - 1; i >= 0; i--) if (steps[i].node && steps[i].node[key] != null) return steps[i].node[key];
+    var c = catOf(id);
+    return c && c[key] != null ? c[key] : null;
+  }
+  function fieldsFor(id, path) {
+    var f = nodeSetting(id, path, "fields");
+    return (Array.isArray(f) ? f : []).filter(function (x) { return x && x.id && x.label; });
+  }
+  function bodyLabelFor(id, path) { var b = nodeSetting(id, path, "bodyLabel"); return typeof b === "string" && b.trim() ? b : "후기"; }
+  /* 기록에 저장된 추가 항목을 [이름, 값, 여러 줄인지] 목록으로 (설정에서 지워진 항목은 id 를 이름으로) */
+  function extraRows(it) {
+    var ex = it.extra || {}, defs = fieldsFor(it.category, it.sub), rows = [], seen = {};
+    defs.forEach(function (d) { var v = ex[d.id]; if (v != null && String(v).trim()) { rows.push([d.label, String(v), d.type === "long"]); } seen[d.id] = true; });
+    Object.keys(ex).forEach(function (k) { if (!seen[k] && String(ex[k]).trim()) rows.push([k, String(ex[k]), false]); });
+    return rows;
   }
   /* 저장할 때 내용을 안 채운 소제목 항목은 지운다 */
   function stripEmptySections(text) {
@@ -784,7 +815,7 @@ body.locked .tally, body.locked .bar, body.locked #grid, body.locked #emptySlot,
       if (state.sub && !underPath(it.sub, state.sub)) return false;
       if (state.tag && (it.tags || []).indexOf(state.tag) < 0) return false;
       if (!q) return true;
-      return [it.title, it.oneLine, it.body, (it.tags || []).join(" "), fullCatLabel(it)].join(" ").toLowerCase().indexOf(q) >= 0;
+      return [it.title, it.oneLine, it.body, (it.tags || []).join(" "), fullCatLabel(it), JSON.stringify(it.extra || {})].join(" ").toLowerCase().indexOf(q) >= 0;
     });
     var by = {
       "new": function (a, b) { return (b.createdAt || "").localeCompare(a.createdAt || ""); },
@@ -971,6 +1002,13 @@ body.locked .tally, body.locked .bar, body.locked #grid, body.locked #emptySlot,
       el("h3", { class: "title" }, [el("button", { type: "button", class: "titlebtn", text: it.title || "(제목 없음)", onclick: function () { openReader(it.id); } })]),
       el("div", { class: "meta" }, [favControl(it), el("span", { class: "date", text: fmtDate(it.watchedAt) })]),
       it.oneLine ? el("p", { class: "one", text: "“" + it.oneLine + "”" }) : null,
+      (function () {
+        var short = extraRows(it).filter(function (r) { return !r[2]; }).slice(0, 2);
+        if (!short.length) return null;
+        var p = el("p", { class: "extras" });
+        short.forEach(function (r, i) { if (i) p.appendChild(document.createTextNode(" · ")); p.appendChild(el("b", { text: r[0] })); p.appendChild(document.createTextNode(r[1])); });
+        return p;
+      })(),
       preview ? el("p", { class: "preview-text", text: preview }) : null
     ];
     if ((it.tags || []).length) kids.push(el("div", { class: "tags" }, it.tags.map(function (t) {
@@ -1039,6 +1077,13 @@ body.locked .tally, body.locked .bar, body.locked #grid, body.locked #emptySlot,
       el("p", { class: "reader-meta" }, [fullCatLabel(it), it.watchedAt ? " · " + fmtDate(it.watchedAt) : "", it.fav ? " · ★ 즐겨찾기" : ""]),
       el("h2", { class: "reader-title", id: "readerTitle", text: it.title || "(제목 없음)" }),
       it.oneLine ? el("p", { class: "reader-one", text: "“" + it.oneLine + "”" }) : null,
+      (function () {
+        var rows = extraRows(it);
+        if (!rows.length) return null;
+        var dl = el("dl", { class: "reader-extra" });
+        rows.forEach(function (r) { dl.appendChild(el("dt", { text: r[0] })); dl.appendChild(el("dd", { text: r[1] })); });
+        return dl;
+      })(),
       it.body ? bodyNode(it.body) : el("p", { class: "reader-empty", text: "아직 적은 후기가 없어요." })
     ]);
     if ((it.tags || []).length) inner.appendChild(el("div", { class: "tags" }, it.tags.map(function (t) {
@@ -1148,6 +1193,32 @@ body.locked .tally, body.locked .bar, body.locked #grid, body.locked #emptySlot,
       prefix.push(chosen);
     }
     $("fSubWrap").hidden = !box.children.length;
+    renderExtras();
+  }
+  /* 추가 항목 칸: 분류를 바꿔도 이미 적은 값은 기억해 두었다가 다시 보여준다 */
+  var extraCache = {};
+  function captureExtras() {
+    $("fExtra").querySelectorAll("[data-fid]").forEach(function (n) { extraCache[n.getAttribute("data-fid")] = n.value; });
+  }
+  function currentExtras() {
+    var out = {};
+    $("fExtra").querySelectorAll("[data-fid]").forEach(function (n) { if (n.value.trim()) out[n.getAttribute("data-fid")] = n.value.trim(); });
+    return out;
+  }
+  function renderExtras() {
+    captureExtras();
+    var box = $("fExtra"), cat = $("fCat").value, path = formSubPath();
+    box.textContent = "";
+    fieldsFor(cat, path).forEach(function (d) {
+      var id = "fx-" + d.id, input;
+      if (d.type === "long") input = el("textarea", { id: id });
+      else input = el("input", { id: id, type: d.type === "date" ? "date" : "text", inputmode: d.type === "number" ? "numeric" : null, autocomplete: "off" });
+      input.setAttribute("data-fid", d.id);
+      if (d.placeholder) input.placeholder = d.placeholder;
+      input.value = extraCache[d.id] || "";
+      box.appendChild(el("div", { class: "field" }, [el("label", { for: id, text: d.label }), input]));
+    });
+    $("fBodyLabel").textContent = bodyLabelFor(cat, path);
   }
   function applyTemplate() {
     var t = curTemplate(), body = $("fBody");
@@ -1175,7 +1246,8 @@ body.locked .tally, body.locked .bar, body.locked #grid, body.locked #emptySlot,
   function sheetTarget() { return state.editing || "new"; }
   function readForm() {
     return { url: $("fUrl").value, title: $("fTitle").value, cat: $("fCat").value, sub: formSubPath(), date: $("fDate").value,
-             fav: $("fFav").checked, one: $("fOne").value, body: $("fBody").value, tags: $("fTags").value, image: $("fImage").value };
+             fav: $("fFav").checked, one: $("fOne").value, body: $("fBody").value, tags: $("fTags").value, image: $("fImage").value,
+             extra: currentExtras() };
   }
   var sheetBaseline = null, sheetTimer = null;
   function saveSheetNow() {
@@ -1202,6 +1274,7 @@ body.locked .tally, body.locked .bar, body.locked #grid, body.locked #emptySlot,
   function applyForm(f) {
     $("fUrl").value = f.url || ""; $("fTitle").value = f.title || "";
     if (f.cat && catOf(f.cat)) $("fCat").value = f.cat;
+    $("fExtra").textContent = ""; extraCache = clone(f.extra || {});
     fillSubs(f.sub || "");
     $("fDate").value = f.date || ""; $("fFav").checked = !!f.fav; $("fOne").value = f.one || "";
     $("fBody").value = f.body || ""; $("fTags").value = f.tags || ""; $("fImage").value = f.image || "";
@@ -1236,6 +1309,7 @@ body.locked .tally, body.locked .bar, body.locked #grid, body.locked #emptySlot,
     var fallbackCat = (state.filter !== "all" && state.filter !== "fav") ? state.filter : CATS[0].id;
     $("fCat").value = it ? it.category || fallbackCat : fallbackCat;
     if (!$("fCat").value) $("fCat").value = CATS[0].id;
+    $("fExtra").textContent = ""; extraCache = it ? clone(it.extra || {}) : {};
     fillSubs(it ? it.sub : (state.filter === $("fCat").value ? state.sub : ""));
     $("fDate").value = it ? it.watchedAt || "" : today();
     $("fOne").value = it ? it.oneLine || "" : "";
@@ -1293,6 +1367,13 @@ body.locked .tally, body.locked .bar, body.locked #grid, body.locked #emptySlot,
     if (image) item.image = image;
     var subPath = formSubPath();
     if (subPath) item.sub = subPath;
+    /* 추가 항목: 지금 보이는 칸의 값 + (분류가 그대로면) 설정에서 사라진 예전 항목도 지우지 않고 남긴다 */
+    var extra = currentExtras();
+    if (prev && prev.extra && prev.category === item.category && (prev.sub || "") === (item.sub || "")) {
+      var shown = {}; fieldsFor(item.category, item.sub).forEach(function (d) { shown[d.id] = true; });
+      Object.keys(prev.extra).forEach(function (k) { if (!shown[k] && !(k in extra)) extra[k] = prev.extra[k]; });
+    }
+    if (Object.keys(extra).length) item.extra = extra;
     if (prev) state.items = state.items.map(function (x) { return x.id === prev.id ? item : x; });
     else state.items.push(item);
     closeSheet(true); commit();
@@ -1308,6 +1389,15 @@ body.locked .tally, body.locked .bar, body.locked #grid, body.locked #emptySlot,
       if (c.template) {
         var t = Array.isArray(c.template) ? c.template : String(c.template).split("\n");
         parts.push(pad + "  \"template\": [\n" + t.map(function (s) { return pad + "    " + JSON.stringify(s); }).join(",\n") + "\n" + pad + "  ]");
+      }
+      if (typeof c.bodyLabel === "string") parts.push(pad + "  \"bodyLabel\": " + JSON.stringify(c.bodyLabel));
+      if (Array.isArray(c.fields) && c.fields.length) {
+        parts.push(pad + "  \"fields\": [\n" + c.fields.filter(function (f) { return f && f.id; }).map(function (f) {
+          var o = "{ \"id\": " + JSON.stringify(f.id) + ", \"label\": " + JSON.stringify(f.label || f.id);
+          if (f.type) o += ", \"type\": " + JSON.stringify(f.type);
+          if (f.placeholder) o += ", \"placeholder\": " + JSON.stringify(f.placeholder);
+          return pad + "    " + o + " }";
+        }).join(",\n") + "\n" + pad + "  ]");
       }
       if (Array.isArray(c.sub) && c.sub.length) {
         parts.push(pad + "  \"sub\": [\n" + c.sub.filter(function (s) { return s && s.id; }).map(function (s) { return catText(s, pad + "    "); }).join(",\n") + "\n" + pad + "  ]");
@@ -1332,6 +1422,8 @@ body.locked .tally, body.locked .bar, body.locked #grid, body.locked #emptySlot,
            "// 순서대로 필터와 작성 화면에 나와요.\n" +
            "// template: (선택) 이 분류로 새 기록을 쓸 때 후기 칸에 미리 채워지는 양식. 한 줄에 하나씩, ■ 로 시작하면 소제목\n" +
            "// sub: (선택) 하위 카테고리 목록. 모양은 카테고리와 같고, 하위 카테고리에도 template 을 붙일 수 있어요\n" +
+           "// fields: (선택) 이 분류에만 생기는 추가 입력칸. { \"id\": 영문 이름, \"label\": 보이는 이름, \"type\": text·long·number·date }\n" +
+           "// bodyLabel: (선택) 후기 칸의 이름 (예: \"기억\", \"감상\")\n" +
            "window.CATEGORIES = [\n" + cats + "\n];\n\n" +
            "// ── 기록 ──\n" +
            "window.REVIEWS = " + JSON.stringify(list, null, 2) + ";\n";
