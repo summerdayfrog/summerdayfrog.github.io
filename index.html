@@ -1,0 +1,1254 @@
+<!doctype html>
+<html lang="ko">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
+<title>감상 노트</title>
+<meta name="description" content="감상 노트">
+<!-- 검색엔진에 나오지 않게 한다 -->
+<meta name="robots" content="noindex, nofollow, noarchive">
+<!-- 글꼴: Pretendard (고딕체) -->
+<link rel="stylesheet" href="https://cdn.jsdelivr.net/gh/orioncactus/pretendard@v1.3.9/dist/web/static/pretendard.min.css">
+<style>
+/* Layout: a shelf of index cards on a pastel sky ground — masthead with tallies, a filter rail, then a wrapping grid of cards topped by thumbnails or generated covers. */
+:root {
+  --bg: #DCEEFB;
+  --paper: #FFFFFF;
+  --ink: #1B2A3A;
+  --muted: #5A6E82;
+  --line: #C3D9EC;
+  --accent: #E0614B;
+  --accent-ink: #FFFFFF;
+  --chip: #CBE3F6;
+  --edit: #FFF6DA;
+  --edit-line: #EBCB6E;
+  --cover-1: #4A7FB5; --cover-2: #E07A62; --cover-3: #4F9A8C;
+  --cover-4: #8A74B8; --cover-5: #C9934A; --cover-6: #5C8FA8;
+  --cover-ink: #FFFFFF;
+  --shadow: 0 1px 0 rgba(27,42,58,.05), 0 8px 20px -12px rgba(27,42,58,.28);
+  /* 모든 글꼴을 고딕체 하나로 통일 */
+  --f-sans: "Pretendard", -apple-system, BlinkMacSystemFont, "Apple SD Gothic Neo", "Malgun Gothic", "Noto Sans KR", system-ui, sans-serif;
+  --f-display: var(--f-sans);
+  --f-body: var(--f-sans);
+  --f-hand: var(--f-sans);
+  --f-mono: var(--f-sans);
+  color-scheme: light;
+}
+* { box-sizing: border-box; }
+html { -webkit-text-size-adjust: 100%; }
+body { margin: 0; background: var(--bg); color: var(--ink); font-family: var(--f-body); font-size: 15px; line-height: 1.6;
+  padding-top: env(safe-area-inset-top, 0px); padding-bottom: env(safe-area-inset-bottom, 0px); }
+img { max-width: 100%; display: block; }
+[hidden] { display: none !important; }
+.wrap { max-width: 1080px; margin: 0 auto; padding-inline: 20px; padding-block: 40px 72px; display: grid; gap: 28px; }
+button, input, select, textarea { font: inherit; color: inherit; }
+button { cursor: pointer; }
+:focus-visible { outline: 2px solid var(--accent); outline-offset: 2px; }
+
+/* Masthead */
+.mast { display: grid; gap: 18px; }
+.mast-top { display: flex; flex-wrap: wrap; align-items: end; justify-content: space-between; gap: 16px; }
+.eyebrow { font-family: var(--f-mono); font-size: 12px; letter-spacing: .12em; text-transform: uppercase; color: var(--muted); margin: 0 0 6px; }
+h1 { font-family: var(--f-display); font-weight: 800; font-size: clamp(36px, 6.5vw, 58px); line-height: 1.05; margin: 0; letter-spacing: -.035em; text-wrap: balance; }
+.intro { margin: 10px 0 0; color: var(--muted); max-width: 52ch; }
+.tally { display: flex; flex-wrap: wrap; margin: 0; border-top: 1.5px solid var(--ink); border-bottom: 1px solid var(--line); }
+.tally div { flex: 1 1 120px; padding: 10px 14px 10px 0; display: grid; gap: 2px; }
+.tally div + div { padding-left: 14px; border-left: 1px solid var(--line); }
+.tally dt { font-size: 12px; color: var(--muted); }
+.tally dd { margin: 0; font-family: var(--f-mono); font-size: 22px; font-weight: 700; letter-spacing: -.02em; font-variant-numeric: tabular-nums; }
+.tally dd.word { font-family: var(--f-body); font-size: 18px; padding-top: 3px; }
+
+.btn { border: 0; border-radius: 999px; padding: 10px 18px; font-weight: 600; background: var(--accent); color: var(--accent-ink); display: inline-flex; align-items: center; gap: 8px; }
+.btn:hover { filter: brightness(1.06); }
+.btn:disabled { opacity: .5; cursor: default; }
+.btn.ghost { background: transparent; color: var(--ink); border: 1px solid var(--line); }
+.btn.ghost:hover { background: var(--chip); filter: none; }
+.btn.small { padding: 6px 12px; font-size: 13px; }
+.btn.danger { background: transparent; color: var(--accent); border: 1px solid var(--accent); }
+
+/* Edit banner */
+.editbar { background: var(--edit); border: 1px solid var(--edit-line); border-radius: 10px; padding: 12px 14px; display: grid; gap: 10px; }
+.editbar p { margin: 0; font-size: 14px; }
+.editbar .row { display: flex; flex-wrap: wrap; gap: 8px; align-items: center; }
+.editbar .state { font-family: var(--f-mono); font-size: 12px; color: var(--muted); }
+.editbar .state.dirty { color: var(--accent); }
+.editbar .state.ok { color: #2F7D5B; }
+.editbar p.err { color: var(--accent); }
+.ghform { display: grid; gap: 10px; border-top: 1px dashed var(--edit-line); padding-top: 12px; }
+.ghform .row3 { display: grid; grid-template-columns: 1fr 1fr 110px; gap: 10px; }
+.ghform .field input { background: var(--paper); }
+.ghform .hint { margin: 0; }
+.ghform a { color: var(--ink); }
+@media (max-width: 560px) { .ghform .row3 { grid-template-columns: 1fr; } }
+
+/* Toolbar */
+.bar { display: flex; flex-wrap: wrap; gap: 10px 16px; align-items: center; justify-content: space-between; }
+.chips { display: flex; flex-wrap: wrap; gap: 4px 18px; }
+.chip { border: 0; background: none; padding: 4px 0; font-size: 14.5px; color: var(--muted); font-weight: 400; }
+.chip:hover { color: var(--ink); }
+.chip[aria-pressed="true"] { color: var(--ink); font-weight: 700; }
+/* 볼드로 바뀌어도 옆 항목이 밀리지 않도록 볼드 폭만큼 자리를 미리 잡아둔다 */
+.chip .lbl { display: inline-flex; flex-direction: column; }
+.chip .lbl::after { content: attr(data-text); font-weight: 700; height: 0; visibility: hidden; overflow: hidden; user-select: none; }
+.subrow { flex-basis: 100%; display: flex; flex-wrap: wrap; align-items: center; gap: 2px 16px; padding-left: 4px; }
+.subrow::before { content: "└"; color: var(--muted); font-size: 13px; margin-right: -8px; }
+.subrow .chip { font-size: 13.5px; }
+.subselects { display: grid; gap: 8px; }
+.subsel { display: flex; align-items: center; gap: 6px; min-width: 0; }
+.subsel.nested::before { content: "└"; color: var(--muted); font-size: 13px; }
+.subsel select { flex: 1; min-width: 0; }
+.chip .n { font-family: var(--f-mono); font-size: 11px; opacity: .65; margin-left: 4px; }
+.tools { display: flex; gap: 8px; flex-wrap: wrap; flex: 1 1 260px; justify-content: flex-end; }
+.tools input, .tools select { background: var(--paper); border: 1px solid var(--line); border-radius: 8px; padding: 7px 10px; font-size: 14px; min-width: 0; }
+.tools input { flex: 1 1 160px; max-width: 260px; }
+
+/* Grid of cards */
+.grid { display: grid; grid-template-columns: repeat(auto-fill, minmax(min(100%, 300px), 1fr)); gap: 18px; align-items: start; }
+.card { background: var(--paper); border-radius: 6px; box-shadow: var(--shadow); overflow: hidden; display: grid; min-width: 0; }
+.cover { position: relative; aspect-ratio: 16 / 9; max-width: 100%; color: var(--cover-ink); overflow: hidden; display: block; text-decoration: none; }
+.cover .gen { position: absolute; inset: 0; padding: 12px 14px; display: flex; flex-direction: column; justify-content: space-between;
+  background-image: repeating-linear-gradient(135deg, rgba(255,255,255,.07) 0 2px, transparent 2px 9px); }
+.cover .glyph { position: absolute; right: -6px; bottom: -30px; font-family: var(--f-display); font-weight: 800; font-size: 140px; line-height: 1; opacity: .2; pointer-events: none; }
+.cover img { position: absolute; inset: 0; width: 100%; height: 100%; object-fit: cover; }
+.cover .label { position: absolute; left: 10px; bottom: 10px; display: flex; gap: 6px; flex-wrap: wrap; }
+.cover .label span, .cover .ex { font-family: var(--f-mono); font-size: 11px; letter-spacing: .06em; background: rgba(10,14,12,.68); color: #F6F4EC; padding: 2px 8px; border-radius: 4px; }
+.cover .ex { position: absolute; top: 10px; right: 10px; font-family: var(--f-body); letter-spacing: 0; }
+.cover .play { position: absolute; left: 50%; top: 50%; width: 68px; height: 48px; margin: -24px 0 0 -34px; border-radius: 14px; background: rgba(10,14,12,.6); display: grid; place-items: center; transition: background .15s; }
+.cover .play::after { content: ""; border-left: 18px solid #fff; border-top: 11px solid transparent; border-bottom: 11px solid transparent; margin-left: 5px; }
+a.cover:hover .play, a.cover:focus-visible .play { background: var(--accent); }
+.card { cursor: pointer; }
+.titlebtn { all: unset; cursor: pointer; }
+.titlebtn:hover { color: var(--accent); }
+.titlebtn:focus-visible { outline: 2px solid var(--accent); outline-offset: 2px; border-radius: 2px; }
+.preview-text { margin: 0; font-size: 13.5px; color: var(--muted); display: -webkit-box; -webkit-line-clamp: 2; -webkit-box-orient: vertical; overflow: hidden; overflow-wrap: anywhere; }
+
+/* 크게 보기 */
+.reader-overlay { position: fixed; inset: 0; z-index: 15; background: rgba(27,42,58,.5); overflow-y: auto; display: flex; justify-content: center; align-items: flex-start;
+  padding: calc(32px + env(safe-area-inset-top, 0px)) 16px calc(32px + env(safe-area-inset-bottom, 0px)); }
+.reader { background: var(--paper); width: min(760px, 100%); border-radius: 12px; overflow: hidden; box-shadow: 0 30px 60px -20px rgba(27,42,58,.5); min-width: 0; }
+.reader-top { display: flex; align-items: center; gap: 6px; padding: 10px 12px; border-bottom: 1px solid var(--line); }
+.reader-count { font-size: 13px; color: var(--muted); font-variant-numeric: tabular-nums; min-width: 4.5em; text-align: center; }
+.navbtn { width: 36px; height: 36px; border-radius: 50%; border: 1px solid var(--line); background: var(--paper); font-size: 20px; line-height: 1; display: grid; place-items: center; color: var(--ink); }
+.navbtn:hover:not(:disabled) { background: var(--chip); }
+.navbtn:disabled { opacity: .35; cursor: default; }
+.navbtn.close { font-size: 15px; }
+.cover.big .glyph { font-size: 240px; bottom: -56px; }
+.reader-body { padding: 24px 28px 28px; display: grid; gap: 14px; min-width: 0; }
+.reader-meta { margin: 0; font-size: 13px; color: var(--muted); }
+.reader-title { margin: 0; font-size: clamp(22px, 4vw, 30px); font-weight: 800; letter-spacing: -.03em; line-height: 1.3; text-wrap: balance; overflow-wrap: anywhere; }
+.reader-one { margin: 0; font-size: 18px; font-weight: 600; line-height: 1.5; padding-left: 14px; border-left: 3px solid var(--accent); overflow-wrap: anywhere; }
+.reader .full { font-size: 16px; line-height: 1.8; border-top: 1px solid var(--line); padding-top: 18px; max-width: 65ch; }
+.reader .full .sec { font-size: 13px; margin-top: 18px; }
+.reader .full .sec:first-child { margin-top: 0; }
+.reader-empty { margin: 0; color: var(--muted); }
+.reader .actions { padding-top: 6px; border-top: 1px solid var(--line); padding-top: 16px; }
+.reader a.btn { text-decoration: none; }
+@media (max-width: 560px) {
+  .reader-overlay { padding: 0; }
+  .reader { border-radius: 0; min-height: 100%; }
+  .reader-top { position: sticky; top: 0; background: var(--paper); z-index: 1; padding-top: calc(10px + env(safe-area-inset-top, 0px)); }
+  .reader-body { padding: 20px 18px calc(28px + env(safe-area-inset-bottom, 0px)); }
+}
+.body { padding: 14px 16px 16px; display: grid; gap: 8px; min-width: 0; }
+.title { font-weight: 600; font-size: 17px; line-height: 1.35; margin: 0; overflow-wrap: anywhere; text-wrap: balance; }
+.meta { display: flex; align-items: center; justify-content: space-between; gap: 8px; flex-wrap: wrap; }
+.favmark { font-size: 13px; font-weight: 600; color: var(--accent); }
+.favbtn { background: none; border: 1px solid var(--line); border-radius: 999px; padding: 2px 10px; font-size: 13px; color: var(--muted); }
+.favbtn:hover { color: var(--ink); }
+.favbtn[aria-pressed="true"] { color: var(--accent); border-color: var(--accent); font-weight: 600; }
+.cover .favbadge { position: absolute; top: 10px; left: 10px; width: 28px; height: 28px; border-radius: 50%; background: var(--accent); color: var(--accent-ink); display: grid; place-items: center; font-size: 15px; line-height: 1; }
+.check { display: flex; align-items: center; gap: 8px; font-size: 14px; cursor: pointer; }
+.check input { width: 18px; height: 18px; accent-color: var(--accent); margin: 0; }
+.date { font-family: var(--f-mono); font-size: 12px; color: var(--muted); font-variant-numeric: tabular-nums; }
+.one { font-family: var(--f-hand); font-size: 15.5px; font-weight: 500; line-height: 1.45; margin: 0; overflow-wrap: anywhere; color: var(--ink); }
+.full { margin: 0; white-space: pre-wrap; overflow-wrap: anywhere; font-size: 14px; border-top: 1px dashed var(--line); padding-top: 10px; }
+.full .sec { display: block; font-size: 12px; font-weight: 600; color: var(--accent); letter-spacing: .02em; margin-top: 6px; }
+.full .sec:first-child { margin-top: 0; }
+.lblrow { display: flex; align-items: baseline; justify-content: space-between; gap: 8px; }
+.tags { display: flex; flex-wrap: wrap; gap: 4px; }
+.tag { font-size: 12px; color: var(--muted); background: var(--chip); padding: 1px 8px; border-radius: 4px; border: 0; }
+.tag:hover { color: var(--ink); }
+.actions { display: flex; flex-wrap: wrap; gap: 6px; align-items: center; margin-top: 2px; }
+.link { color: var(--ink); font-weight: 600; font-size: 13px; text-decoration: none; border-bottom: 1.5px solid var(--accent); padding-bottom: 1px; }
+.link:hover { color: var(--accent); }
+.textbtn { background: none; border: 0; padding: 4px 6px; font-size: 13px; color: var(--muted); }
+.textbtn:hover { color: var(--ink); }
+.spacer { flex: 1; }
+.confirm { display: flex; flex-wrap: wrap; align-items: center; gap: 6px; font-size: 13px; background: var(--chip); padding: 8px 10px; border-radius: 6px; }
+
+.empty, .notice { background: var(--paper); border: 1px dashed var(--line); border-radius: 8px; padding: 28px 22px; display: grid; gap: 8px; justify-items: start; }
+.empty h2 { font-family: var(--f-display); font-weight: 700; letter-spacing: -.02em; font-size: 26px; margin: 0; }
+.empty p, .notice p { margin: 0; color: var(--muted); max-width: 56ch; }
+.notice { padding: 12px 16px; border-style: solid; }
+
+/* Sheet (add / edit) */
+.overlay { position: fixed; inset: 0; background: rgba(10,14,12,.45); z-index: 20; display: flex; justify-content: flex-end; }
+.sheet { background: var(--paper); width: min(480px, 100%); height: 100%; overflow-y: auto; padding: calc(22px + env(safe-area-inset-top, 0px)) 22px calc(22px + env(safe-area-inset-bottom, 0px)); display: grid; gap: 14px; align-content: start; box-shadow: -10px 0 30px -12px rgba(0,0,0,.4); }
+.sheet h2 { font-family: var(--f-display); font-weight: 700; letter-spacing: -.02em; font-size: 28px; margin: 0; }
+.field { display: grid; gap: 5px; min-width: 0; }
+.field label, .field .lbl { font-size: 13px; font-weight: 500; }
+.hint { font-size: 12px; color: var(--muted); font-weight: 400; }
+.field input, .field select, .field textarea { background: var(--bg); border: 1px solid var(--line); border-radius: 8px; padding: 9px 11px; width: 100%; }
+.field textarea { min-height: 130px; resize: vertical; line-height: 1.55; }
+.preview { aspect-ratio: 16 / 9; border-radius: 6px; overflow: hidden; background: var(--chip); }
+.preview img { width: 100%; height: 100%; object-fit: cover; }
+.row2 { display: grid; grid-template-columns: 1fr 1fr; gap: 12px; }
+@media (max-width: 420px) { .row2 { grid-template-columns: 1fr; } }
+.sheet-actions { display: flex; gap: 8px; justify-content: flex-end; flex-wrap: wrap; padding-top: 4px; }
+.err { color: var(--accent); font-size: 13px; margin: 0; }
+footer { color: var(--muted); font-size: 12px; font-family: var(--f-mono); display: flex; flex-wrap: wrap; gap: 8px; justify-content: space-between; }
+footer a { color: inherit; }
+@media (prefers-reduced-motion: no-preference) {
+  .card { transition: transform .15s ease; }
+  .card:hover { transform: translateY(-2px); }
+}
+/* 잠금 화면: 연결 안내만 보여준다 */
+body.locked .tally, body.locked .bar, body.locked #grid, body.locked #emptySlot, body.locked #addBtn { display: none; }
+</style>
+</head>
+<body>
+<div class="wrap">
+  <header class="mast">
+    <div class="mast-top">
+      <div>
+        <p class="eyebrow" id="siteEyebrow" hidden></p>
+        <h1 id="siteTitle">감상 노트</h1>
+        <p class="intro" id="siteIntro" hidden></p>
+      </div>
+      <button class="btn" id="addBtn" type="button" hidden>+ 새 기록</button>
+    </div>
+    <dl class="tally">
+      <div><dt>전체 기록</dt><dd id="tTotal">0</dd></div>
+      <div><dt>이번 달</dt><dd id="tMonth">0</dd></div>
+      <div><dt>즐겨찾기</dt><dd id="tFav">0</dd></div>
+      <div><dt>가장 많이 본</dt><dd id="tTop" class="word">–</dd></div>
+    </dl>
+  </header>
+
+  <section class="editbar" id="editbar" hidden aria-label="편집 모드">
+    <div class="row">
+      <strong id="editTitle">편집 모드</strong>
+      <span class="state" id="editState" role="status"></span>
+      <span class="spacer"></span>
+      <span id="resetSlot"></span>
+    </div>
+    <p id="editHelp"></p>
+    <div class="row" id="editActions"></div>
+
+    <form class="ghform" id="ghForm" hidden novalidate aria-label="GitHub 연결">
+      <div class="field">
+        <label for="ghToken">GitHub 토큰 <span class="hint">github_pat_ 로 시작하는 글자. 이 브라우저에만 저장돼요</span></label>
+        <input id="ghToken" type="password" autocomplete="off" spellcheck="false" placeholder="github_pat_…">
+      </div>
+      <div class="row3">
+        <div class="field">
+          <label for="ghOwner">GitHub 아이디</label>
+          <input id="ghOwner" autocomplete="off" spellcheck="false" placeholder="hakyung">
+        </div>
+        <div class="field">
+          <label for="ghRepo">저장소 이름</label>
+          <input id="ghRepo" autocomplete="off" spellcheck="false" placeholder="hakyung.github.io">
+        </div>
+        <div class="field">
+          <label for="ghBranch">브랜치</label>
+          <input id="ghBranch" autocomplete="off" spellcheck="false" value="main">
+        </div>
+      </div>
+      <p class="hint">토큰이 없으면 <a href="https://github.com/settings/personal-access-tokens/new" target="_blank" rel="noopener noreferrer">GitHub 토큰 만들기</a>에서 만들어요. 만드는 방법은 README.md에 있어요.</p>
+      <p class="err" id="ghErr" hidden></p>
+      <div class="row">
+        <button type="submit" class="btn small" id="ghConnect">연결하기</button>
+        <button type="button" class="btn small ghost" id="ghCancel">취소</button>
+      </div>
+    </form>
+  </section>
+
+  <div class="bar">
+    <div class="chips" id="chips" role="group" aria-label="분류 필터"></div>
+    <div class="tools">
+      <input id="q" type="search" placeholder="제목, 후기, 태그 검색" aria-label="검색">
+      <select id="sort" aria-label="정렬">
+        <option value="new">최근 기록순</option>
+        <option value="watched">본 날짜순</option>
+        <option value="fav">즐겨찾기 먼저</option>
+      </select>
+    </div>
+  </div>
+
+  <div id="status"></div>
+  <main class="grid" id="grid" aria-live="polite"></main>
+  <div id="emptySlot"></div>
+
+  <footer>
+    <span id="footNote">감상 노트</span>
+    <span id="editLink"></span>
+  </footer>
+</div>
+
+<div class="reader-overlay" id="reader" hidden>
+  <article class="reader" id="readerPanel" role="dialog" aria-modal="true" aria-labelledby="readerTitle"></article>
+</div>
+
+<div class="overlay" id="overlay" hidden>
+  <form class="sheet" id="form" novalidate aria-labelledby="formTitle">
+    <h2 id="formTitle">새 기록</h2>
+    <div class="field">
+      <label for="fUrl">링크 <span class="hint">유튜브 링크를 넣으면 썸네일이 자동으로 붙어요</span></label>
+      <input id="fUrl" type="url" inputmode="url" placeholder="https://youtu.be/…">
+    </div>
+    <div class="preview" id="fPreview" hidden><img id="fPreviewImg" alt=""></div>
+    <div class="field">
+      <label for="fTitle">제목</label>
+      <input id="fTitle" required maxlength="140" placeholder="영상 제목, 앨범명, 책 제목">
+    </div>
+    <div class="row2">
+      <div class="field">
+        <label for="fCat">분류</label>
+        <select id="fCat"></select>
+      </div>
+      <div class="field">
+        <label for="fDate">본 날짜</label>
+        <input id="fDate" type="date">
+      </div>
+    </div>
+    <div class="field" id="fSubWrap" hidden>
+      <span class="lbl">세부 분류</span>
+      <div class="subselects" id="fSubs"></div>
+    </div>
+    <label class="check" for="fFav"><input type="checkbox" id="fFav"> ★ 즐겨찾기에 넣기</label>
+    <div class="field">
+      <label for="fOne">한줄평</label>
+      <input id="fOne" maxlength="80" placeholder="한 문장으로 남기는 첫인상">
+    </div>
+    <div class="field">
+      <div class="lblrow">
+        <label for="fBody">후기</label>
+        <button type="button" class="textbtn" id="tplBtn" hidden>양식 넣기</button>
+      </div>
+      <textarea id="fBody" placeholder="기억에 남는 장면, 배운 것, 떠오른 생각…"></textarea>
+    </div>
+    <div class="field">
+      <label for="fTags">태그</label>
+      <input id="fTags" placeholder="쉼표로 구분: 다큐, 과학, 다시볼것">
+    </div>
+    <div class="field">
+      <label for="fImage">커버 이미지 주소 <span class="hint">(선택) 책 표지 등. 비우면 썸네일이나 색 커버</span></label>
+      <input id="fImage" type="url" inputmode="url" placeholder="https://…/cover.jpg">
+    </div>
+    <p class="err" id="fErr" hidden></p>
+    <div class="sheet-actions">
+      <button type="button" class="btn ghost" id="cancelBtn">취소</button>
+      <button type="submit" class="btn">저장</button>
+    </div>
+  </form>
+</div>
+
+<script>
+  /* reviews.js 를 읽다가 문제가 생기면 몇 번째 줄인지 기억해 둔다 */
+  window.addEventListener("error", function (e) {
+    if (e.filename && /\/reviews\.js(\?|#|$)/.test(e.filename)) window.REVIEWS_ERROR = { line: e.lineno, msg: e.message };
+  });
+</script>
+<script src="reviews.js" onerror="window.REVIEWS_MISSING = true"></script>
+<script>
+(function () {
+  "use strict";
+  var DRAFT_KEY = "hakyung-notes-draft";
+  var GH_KEY = "hakyung-notes-github";   /* GitHub 토큰은 이 브라우저에만 저장된다 */
+  /* 카테고리는 reviews.js 의 window.CATEGORIES 에서 읽는다 */
+  var CATS = (Array.isArray(window.CATEGORIES) ? window.CATEGORIES : []).filter(function (c) { return c && c.id && c.label; });
+  if (!CATS.length) CATS = [
+    { id: "video", label: "영상" }, { id: "music", label: "음악" }, { id: "film", label: "영화·드라마" },
+    { id: "book", label: "책" }, { id: "etc", label: "기타" }
+  ];
+  function catLabel(id) { for (var i = 0; i < CATS.length; i++) if (CATS[i].id === id) return CATS[i].label; return id || "미분류"; }
+  /* 카테고리별 후기 양식: reviews.js 에서 "template": ["■ 제목", "", ...] 처럼 줄 목록으로 적는다 */
+  /* 하위 카테고리: reviews.js 에서 카테고리 안에 "sub": [{ "id": "...", "label": "..." }] 로 적는다 */
+  function catOf(id) { for (var i = 0; i < CATS.length; i++) if (CATS[i].id === id) return CATS[i]; return null; }
+  /* 하위 카테고리는 몇 단계든 "sub" 안에 "sub" 를 넣어 만든다.
+     기록에는 경로를 "lecture/math" 처럼 / 로 이어서 저장한다. */
+  function childrenOf(node) { return node && Array.isArray(node.sub) ? node.sub.filter(function (s) { return s && s.id && s.label; }) : []; }
+  function splitPath(p) { return p ? String(p).split("/").filter(Boolean) : []; }
+  function joinPath(prefix, id) { return prefix ? prefix + "/" + id : id; }
+  /* 경로를 따라 내려가며 단계별 이름을 찾는다 (설정에서 지워진 단계는 id 를 그대로 쓴다) */
+  function walk(catId, path) {
+    var node = catOf(catId), out = [];
+    splitPath(path).forEach(function (id) {
+      var n = node ? childrenOf(node).find(function (x) { return x.id === id; }) || null : null;
+      out.push({ id: id, label: n ? n.label : id, node: n });
+      node = n;
+    });
+    return out;
+  }
+  function nodeAt(catId, path) { var w = walk(catId, path); return w.length ? w[w.length - 1].node : catOf(catId); }
+  function underPath(sub, prefix) { return !prefix || sub === prefix || String(sub || "").indexOf(prefix + "/") === 0; }
+  function fullCatLabel(it) { return [catLabel(it.category)].concat(walk(it.category, it.sub).map(function (s) { return s.label; })).join(" · "); }
+  /* 양식은 가장 깊은 단계부터 위로 올라가며 처음 만나는 것을 쓴다 */
+  function templateFor(id, path) {
+    function txt(t) { return Array.isArray(t) ? t.join("\n") : String(t); }
+    var steps = walk(id, path);
+    for (var i = steps.length - 1; i >= 0; i--) if (steps[i].node && steps[i].node.template) return txt(steps[i].node.template);
+    var c = catOf(id);
+    return c && c.template ? txt(c.template) : "";
+  }
+  /* 소제목 줄: ■ 로 시작하거나, 어느 양식에든 적혀 있는 줄 (⁋제목, ✓후기 처럼 어떤 기호를 써도 된다) */
+  function templateLines() {
+    var set = {};
+    (function visit(list) {
+      (list || []).forEach(function (n) {
+        if (!n) return;
+        var t = Array.isArray(n.template) ? n.template : (n.template ? String(n.template).split("\n") : []);
+        t.forEach(function (l) { l = String(l).trim(); if (l) set[l] = true; });
+        visit(n.sub);
+      });
+    })(CATS);
+    return set;
+  }
+  function headingTest() {
+    var set = templateLines();
+    return function (line) { return /^■/.test(line) || set[String(line).trim()] === true; };
+  }
+  /* 저장할 때 내용을 안 채운 소제목 항목은 지운다 */
+  function stripEmptySections(text) {
+    var isHead = headingTest();
+    var lines = text.split("\n"), out = [], i = 0;
+    while (i < lines.length) {
+      if (isHead(lines[i])) {
+        var j = i + 1, content = [];
+        while (j < lines.length && !isHead(lines[j])) { content.push(lines[j]); j++; }
+        if (content.join("").trim()) { out.push(lines[i]); out = out.concat(content); }
+        i = j;
+      } else { out.push(lines[i]); i++; }
+    }
+    return out.join("\n").replace(/\n{3,}/g, "\n\n").trim();
+  }
+  /* 후기 본문: 소제목 줄은 강조해서 보여준다 (■ 는 떼고, 다른 기호는 그대로 둔다) */
+  function bodyNode(text) {
+    var isHead = headingTest();
+    var p = el("p", { class: "full" }), prevSec = true;
+    text.split("\n").forEach(function (line) {
+      if (isHead(line)) { p.appendChild(el("strong", { class: "sec", text: line.replace(/^■\s*/, "").trim() })); prevSec = true; }
+      else { if (!prevSec) p.appendChild(document.createTextNode("\n")); p.appendChild(document.createTextNode(line)); prevSec = false; }
+    });
+    return p;
+  }
+
+  /* 사이트 문구는 reviews.js 의 window.SITE 에서 읽는다. 빈 칸("")으로 두면 그 줄은 숨긴다 */
+  var SITE = (window.SITE && typeof window.SITE === "object") ? window.SITE : {};
+  function applySite() {
+    function put(id, value) {
+      if (typeof value !== "string") return;
+      var node = document.getElementById(id);
+      node.textContent = value; node.hidden = value.trim() === "";
+    }
+    put("siteTitle", SITE.title);
+    put("siteEyebrow", SITE.eyebrow);
+    put("siteIntro", SITE.intro);
+    put("footNote", typeof SITE.footer === "string" ? SITE.footer : SITE.title);
+    if (typeof SITE.title === "string" && SITE.title.trim()) document.title = SITE.title;
+    if (typeof SITE.intro === "string") {
+      var meta = document.querySelector('meta[name="description"]');
+      if (meta) meta.setAttribute("content", SITE.intro);
+    }
+  }
+  applySite();
+
+  var BASE = Array.isArray(window.REVIEWS) ? window.REVIEWS : null;
+  var state = { edit: false, items: [], filter: "all", sub: "", tag: "", q: "", sort: "new",
+                readerId: null, confirmId: null, confirmReset: false, editing: null };
+
+  function $(id) { return document.getElementById(id); }
+  function el(tag, attrs, kids) {
+    var n = document.createElement(tag);
+    if (attrs) Object.keys(attrs).forEach(function (k) {
+      var v = attrs[k];
+      if (v === undefined || v === null || v === false) return;
+      if (k === "class") n.className = v;
+      else if (k === "text") n.textContent = v;
+      else if (k.slice(0, 2) === "on") n.addEventListener(k.slice(2), v);
+      else n.setAttribute(k, v);
+    });
+    (kids || []).forEach(function (c) { if (c != null) n.appendChild(typeof c === "string" ? document.createTextNode(c) : c); });
+    return n;
+  }
+  function clone(x) { return JSON.parse(JSON.stringify(x)); }
+  function hash(s) { var h = 0; for (var i = 0; i < s.length; i++) h = (h * 31 + s.charCodeAt(i)) | 0; return Math.abs(h); }
+  function today() { var d = new Date(); return d.getFullYear() + "-" + String(d.getMonth() + 1).padStart(2, "0") + "-" + String(d.getDate()).padStart(2, "0"); }
+  function fmtDate(s) { return s ? s.replace(/-/g, ".") : ""; }
+  function safeUrl(u) { try { var p = new URL(u); return (p.protocol === "https:" || p.protocol === "http:") ? p.href : null; } catch (e) { return null; } }
+
+  /* 유튜브 링크에서 11자리 영상 코드를 꺼낸다 (si= 는 공유 추적값이라 무시) */
+  function youtubeId(u) {
+    if (!u) return null;
+    var url; try { url = new URL(u); } catch (e) { return null; }
+    var host = url.hostname.replace(/^www\.|^m\.|^music\./, "");
+    var id = null;
+    if (host === "youtu.be") id = url.pathname.split("/")[1];
+    else if (host === "youtube.com" || host === "youtube-nocookie.com") {
+      id = url.searchParams.get("v");
+      if (!id) { var m = url.pathname.match(/^\/(shorts|embed|live|v)\/([^/?#]+)/); if (m) id = m[2]; }
+    }
+    return id && /^[A-Za-z0-9_-]{11}$/.test(id) ? id : null;
+  }
+  function thumbFor(it) {
+    var img = safeUrl(it.image || "");
+    if (img) return img;
+    var id = youtubeId(it.url);
+    return id ? "https://img.youtube.com/vi/" + id + "/hqdefault.jpg" : null;
+  }
+
+  /* ---------- 데이터 ----------
+     보기 모드: reviews.js 를 그대로 보여준다.
+     편집 모드: 고친 내용을 이 브라우저에 임시 저장(draft)하고,
+               GitHub 와 연결돼 있으면 바뀔 때마다 GitHub 의 reviews.js 에 바로 저장한다. */
+  function same(a, b) { return JSON.stringify(a) === JSON.stringify(b); }
+  function byId(list) { var m = {}; (list || []).forEach(function (it) { m[it.id] = it; }); return m; }
+  /* from → to 로 바뀐 내용(추가·수정·삭제)을 onto 위에 다시 적용한다 */
+  function applyChanges(from, to, onto) {
+    var a = byId(from), b = byId(to), out = clone(onto);
+    Object.keys(b).forEach(function (id) {
+      if (a[id] && same(a[id], b[id])) return;
+      var i = out.findIndex(function (x) { return x.id === id; });
+      if (i >= 0) out[i] = clone(b[id]); else out.push(clone(b[id]));
+    });
+    Object.keys(a).forEach(function (id) { if (!b[id]) out = out.filter(function (x) { return x.id !== id; }); });
+    return out;
+  }
+
+  var gh = { cfg: readGh(), remote: null, status: "idle", message: "", pushing: false, again: false, timer: null, conflicts: 0 };
+  function syncBase() { return gh.remote ? gh.remote.items : (BASE || []); }
+
+  function readDraft() { try { var s = localStorage.getItem(DRAFT_KEY); return s ? JSON.parse(s) : null; } catch (e) { return null; } }
+  function writeDraft() {
+    try {
+      if (same(state.items, syncBase())) localStorage.removeItem(DRAFT_KEY);
+      else localStorage.setItem(DRAFT_KEY, JSON.stringify({ v: 2, base: syncBase(), items: state.items }));
+    } catch (e) {}
+  }
+  function clearDraft() { try { localStorage.removeItem(DRAFT_KEY); } catch (e) {} }
+  /* 임시 저장본을 최신 기록 위에 다시 얹는다 (그사이 다른 곳에서 바뀐 기록을 지우지 않도록) */
+  function rebase(draft, onto) {
+    if (!draft) return clone(onto);
+    if (Array.isArray(draft)) return draft;
+    if (!Array.isArray(draft.items) || !Array.isArray(draft.base) || same(draft.items, draft.base)) return clone(onto);
+    return applyChanges(draft.base, draft.items, onto);
+  }
+  function isDirty() { return !same(state.items, syncBase()); }
+
+  /* 공개 reviews.js 상태: null(정상) / "missing"(없음 → 비공개 저장소 방식) / "syntax"(쉼표 등 오류) */
+  function fileProblem() {
+    if (Array.isArray(window.REVIEWS)) return null;
+    var e = window.REVIEWS_ERROR;
+    if (window.REVIEWS_MISSING || !e || (e.line <= 1 && /</.test(e.msg || ""))) return "missing";
+    return "syntax";
+  }
+  /* 공개 파일이 없고 이 기기에 GitHub 연결도 없으면 잠금 화면 */
+  function isLocked() { return !gh.cfg && !BASE && fileProblem() === "missing"; }
+
+  function load() {
+    state.edit = location.hash === "#edit";
+    var locked = isLocked();
+    $("editbar").hidden = !(state.edit || locked);
+    $("addBtn").hidden = !state.edit || locked;
+    if (!state.edit && !locked) $("ghForm").hidden = true;
+    var base = gh.remote ? gh.remote.items : (BASE || []);
+    state.items = state.edit ? rebase(readDraft(), base) : clone(base);
+    var link = $("editLink"); link.textContent = "";
+    link.appendChild(state.edit
+      ? el("a", { href: "#", text: "편집 모드 닫기", onclick: function (e) { e.preventDefault(); history.replaceState(null, "", location.pathname + location.search); load(); } })
+      : document.createTextNode(""));
+    render();
+    /* GitHub 와 연결된 기기에서는 보기 모드에서도 GitHub 의 최신 기록을 읽는다 (비공개 저장소도 가능) */
+    if (gh.cfg) ghSync();
+  }
+  window.addEventListener("hashchange", load);
+
+  function commit() { writeDraft(); state.confirmId = null; render(); schedulePush(); }
+
+  /* ---------- GitHub 연결 ---------- */
+  function readGh() {
+    try { var o = JSON.parse(localStorage.getItem(GH_KEY) || "null"); return o && o.token && o.owner && o.repo ? o : null; } catch (e) { return null; }
+  }
+  function saveGh(cfg) { try { localStorage.setItem(GH_KEY, JSON.stringify(cfg)); return true; } catch (e) { return false; } }
+  function clearGh() { try { localStorage.removeItem(GH_KEY); } catch (e) {} }
+  /* 주소가 아이디.github.io 면 아이디와 저장소 이름을 미리 채운다 */
+  function guessRepo() {
+    var m = location.hostname.match(/^([A-Za-z0-9-]+)\.github\.io$/i);
+    if (!m) return { owner: "", repo: "" };
+    var seg = location.pathname.split("/").filter(Boolean)[0];
+    if (seg && /\.html?$/i.test(seg)) seg = null;
+    return { owner: m[1], repo: seg || m[1].toLowerCase() + ".github.io" };
+  }
+
+  function b64decode(b64) {
+    var bin = atob(String(b64).replace(/\s/g, "")), bytes = new Uint8Array(bin.length);
+    for (var i = 0; i < bin.length; i++) bytes[i] = bin.charCodeAt(i);
+    return new TextDecoder().decode(bytes);
+  }
+  function b64encode(text) {
+    var bytes = new TextEncoder().encode(text), bin = "";
+    for (var i = 0; i < bytes.length; i += 0x8000) bin += String.fromCharCode.apply(null, bytes.subarray(i, i + 0x8000));
+    return btoa(bin);
+  }
+  function parseDataFile(text) {
+    var w = {};
+    new Function("window", text)(w);
+    if (!Array.isArray(w.REVIEWS)) throw new Error("no REVIEWS");
+    return { items: w.REVIEWS, site: (w.SITE && typeof w.SITE === "object") ? w.SITE : {}, cats: Array.isArray(w.CATEGORIES) ? w.CATEGORIES : null };
+  }
+
+  function ghRequest(cfg, method, body) {
+    var url = "https://api.github.com/repos/" + encodeURIComponent(cfg.owner) + "/" + encodeURIComponent(cfg.repo) + "/contents/reviews.js";
+    if (method === "GET") url += "?ref=" + encodeURIComponent(cfg.branch || "main");
+    var headers = { "Authorization": "Bearer " + cfg.token, "Accept": "application/vnd.github+json", "X-GitHub-Api-Version": "2022-11-28" };
+    if (body) headers["Content-Type"] = "application/json";
+    return fetch(url, { method: method, headers: headers, cache: "no-store", body: body ? JSON.stringify(body) : undefined })
+      .then(function (r) {
+        return r.json().catch(function () { return {}; }).then(function (j) {
+          if (!r.ok) { var e = new Error(j.message || ("HTTP " + r.status)); e.status = r.status; throw e; }
+          return j;
+        });
+      }, function () { var e = new Error("network"); e.status = 0; throw e; });
+  }
+  function ghLoad(cfg) {
+    return ghRequest(cfg, "GET").then(function (j) {
+      if (j.encoding !== "base64" || typeof j.content !== "string") { var e = new Error("unreadable"); e.status = -2; throw e; }
+      var parsed;
+      try { parsed = parseDataFile(b64decode(j.content)); } catch (x) { var e2 = new Error("parse"); e2.status = -1; throw e2; }
+      return { sha: j.sha, items: parsed.items, site: parsed.site, cats: parsed.cats };
+    });
+  }
+  function ghMessage(e, connecting) {
+    var s = e && e.status;
+    if (connecting && s === 401) return "토큰이 맞지 않아요. 토큰을 처음부터 끝까지 다시 복사해서 붙여 넣어 주세요.";
+    if (s === 0) return "인터넷에 연결되지 않았어요. 연결을 확인한 뒤 ‘다시 시도’를 눌러 주세요. 고친 내용은 이 브라우저에 보관돼 있어요.";
+    if (s === 401) return "토큰이 맞지 않거나 사용 기간이 끝났어요. ‘연결 해제’ 후 새 토큰으로 다시 연결해 주세요.";
+    if (s === 403 && /rate limit/i.test(e.message)) return "요청이 너무 많았어요. 몇 분 뒤 ‘다시 시도’를 눌러 주세요.";
+    if (s === 403) return "토큰에 쓰기 권한이 없어요. GitHub 토큰 설정에서 Contents 권한을 ‘Read and write’로 바꿔 주세요.";
+    if (s === 404) return "저장소나 reviews.js를 찾지 못했어요. 아이디·저장소 이름·브랜치가 맞는지, 토큰을 만들 때 이 저장소를 골랐는지 확인해 주세요.";
+    if (s === -1) return "GitHub에 있는 reviews.js를 읽지 못했어요. 파일을 직접 고치다 따옴표나 쉼표가 빠지지 않았는지 확인해 주세요.";
+    if (s === -2) return "GitHub에 있는 reviews.js가 너무 커서 읽지 못했어요.";
+    return "GitHub에 저장하지 못했어요. (" + (e && e.message || "알 수 없는 오류") + ")";
+  }
+
+  function setCats(list) {
+    var f = (Array.isArray(list) ? list : []).filter(function (c) { return c && c.id && c.label; });
+    if (!f.length) return;
+    CATS = f;
+    var sel = $("fCat"), cur = sel.value;
+    sel.textContent = "";
+    CATS.forEach(function (c) { sel.appendChild(el("option", { value: c.id, text: c.label })); });
+    if (cur) sel.value = cur;
+  }
+  function useRemote(remote) {
+    gh.remote = remote;
+    SITE = remote.site || {}; applySite();
+    if (remote.cats) setCats(remote.cats);
+  }
+
+  function ghSync() {
+    gh.status = "loading"; gh.message = ""; render();
+    ghLoad(gh.cfg).then(afterRemote, function (e) {
+      gh.status = "error"; gh.message = ghMessage(e); render();
+    });
+  }
+  function afterRemote(remote) {
+    useRemote(remote);
+    gh.status = "ready";
+    if (state.edit) {
+      state.items = rebase(readDraft(), remote.items);
+      writeDraft(); render();
+      if (isDirty()) schedulePush(0);
+    } else {
+      state.items = clone(remote.items); render();
+    }
+  }
+
+  function schedulePush(delay) {
+    if (!state.edit || !gh.cfg || !gh.remote) return;
+    clearTimeout(gh.timer);
+    gh.status = "pending"; renderEditbar();
+    gh.timer = setTimeout(ghPush, delay == null ? 700 : delay);
+  }
+  function commitMessage(from, to) {
+    var a = byId(from), b = byId(to), add = [], mod = [], del = [];
+    Object.keys(b).forEach(function (id) { if (!a[id]) add.push(b[id]); else if (!same(a[id], b[id])) mod.push(b[id]); });
+    Object.keys(a).forEach(function (id) { if (!b[id]) del.push(a[id]); });
+    var n = add.length + mod.length + del.length;
+    if (n === 1) {
+      var one = add[0] || mod[0] || del[0];
+      return (add.length ? "기록 추가: " : mod.length ? "기록 수정: " : "기록 삭제: ") + (one.title || one.id);
+    }
+    return "감상 노트 업데이트 (추가 " + add.length + " · 수정 " + mod.length + " · 삭제 " + del.length + ")";
+  }
+  function ghPush() {
+    if (!gh.cfg || !gh.remote) return;
+    if (gh.pushing) { gh.again = true; return; }
+    if (!isDirty()) { gh.status = gh.status === "pending" ? "saved" : gh.status; clearDraft(); renderEditbar(); return; }
+    gh.pushing = true; gh.status = "saving"; renderEditbar();
+    var snapshot = clone(state.items), base = gh.remote;
+    function fail(err) { gh.pushing = false; gh.status = "error"; gh.message = ghMessage(err); renderEditbar(); }
+    ghRequest(gh.cfg, "PUT", {
+      message: commitMessage(base.items, snapshot),
+      content: b64encode(fileText(snapshot)),
+      sha: base.sha,
+      branch: gh.cfg.branch || "main"
+    }).then(function (j) {
+      gh.remote = { sha: j.content && j.content.sha, items: snapshot, site: base.site, cats: base.cats };
+      gh.pushing = false; gh.conflicts = 0;
+      if (gh.again || !same(state.items, snapshot)) { gh.again = false; writeDraft(); ghPush(); return; }
+      clearDraft(); gh.status = "saved"; renderEditbar();
+    }, function (e) {
+      /* 다른 기기나 GitHub 화면에서 파일이 바뀐 경우: 최신본을 받아 내 변경만 다시 얹고 저장 */
+      if ((e.status === 409 || e.status === 422) && gh.conflicts < 3) {
+        gh.conflicts++;
+        return ghLoad(gh.cfg).then(function (remote) {
+          var merged = applyChanges(base.items, state.items, remote.items);
+          useRemote(remote);
+          state.items = merged; gh.pushing = false;
+          writeDraft(); render(); ghPush();
+        }, fail);
+      }
+      fail(e);
+    });
+  }
+
+  function openGhForm() {
+    var g = guessRepo(), prev = gh.cfg || {};
+    $("ghOwner").value = prev.owner || g.owner;
+    /* 잠금 화면(비공개 저장소 방식)이면 저장소 이름은 직접 적게 비워 둔다 */
+    $("ghRepo").value = prev.repo || (isLocked() ? "" : g.repo);
+    $("ghRepo").placeholder = isLocked() ? "비공개 저장소 이름 (예: notes)" : "hakyung.github.io";
+    $("ghBranch").value = prev.branch || "main";
+    $("ghToken").value = "";
+    $("ghErr").hidden = true;
+    $("ghForm").hidden = false;
+    $("ghToken").focus();
+  }
+  $("ghCancel").addEventListener("click", function () { $("ghForm").hidden = true; $("ghToken").value = ""; render(); });
+  $("ghForm").addEventListener("submit", function (e) {
+    e.preventDefault();
+    var err = $("ghErr"), btn = $("ghConnect");
+    var cfg = { token: $("ghToken").value.trim(), owner: $("ghOwner").value.trim(), repo: $("ghRepo").value.trim(), branch: $("ghBranch").value.trim() || "main" };
+    function fail(msg, field) { err.textContent = msg; err.hidden = false; if (field) $(field).focus(); }
+    if (!cfg.token) return fail("토큰을 붙여 넣어 주세요.", "ghToken");
+    if (!cfg.owner) return fail("GitHub 아이디를 적어 주세요.", "ghOwner");
+    if (!cfg.repo) return fail("저장소 이름을 적어 주세요.", "ghRepo");
+    err.hidden = true; btn.disabled = true; btn.textContent = "확인 중…";
+    ghLoad(cfg).then(function (remote) {
+      var kept = saveGh(cfg);
+      gh.cfg = cfg; gh.conflicts = 0;
+      $("ghForm").hidden = true; $("ghToken").value = "";
+      $("editbar").hidden = !state.edit; $("addBtn").hidden = !state.edit;
+      afterRemote(remote);
+      if (!kept) { gh.message = "이 브라우저가 저장을 막고 있어서, 페이지를 새로 열면 다시 연결해야 해요."; render(); }
+    }, function (x) {
+      fail(ghMessage(x, true));
+    }).then(function () { btn.disabled = false; btn.textContent = "연결하기"; });
+  });
+
+  function disconnectGh() {
+    clearTimeout(gh.timer);
+    clearGh();
+    gh.cfg = null; gh.remote = null; gh.status = "idle"; gh.message = "";
+    /* 비공개 저장소 방식이면 이 기기에 남은 기록도 지운다 */
+    if (!BASE) { clearDraft(); state.items = []; } else writeDraft();
+  }
+
+  /* ---------- 화면 그리기 ---------- */
+  function visible() {
+    var q = state.q.trim().toLowerCase();
+    var list = state.items.filter(function (it) {
+      if (state.filter === "fav" ? !it.fav : (state.filter !== "all" && it.category !== state.filter)) return false;
+      if (state.sub && !underPath(it.sub, state.sub)) return false;
+      if (state.tag && (it.tags || []).indexOf(state.tag) < 0) return false;
+      if (!q) return true;
+      return [it.title, it.oneLine, it.body, (it.tags || []).join(" "), fullCatLabel(it)].join(" ").toLowerCase().indexOf(q) >= 0;
+    });
+    var by = {
+      "new": function (a, b) { return (b.createdAt || "").localeCompare(a.createdAt || ""); },
+      watched: function (a, b) { return (b.watchedAt || "").localeCompare(a.watchedAt || ""); },
+      fav: function (a, b) { return (b.fav ? 1 : 0) - (a.fav ? 1 : 0) || (b.createdAt || "").localeCompare(a.createdAt || ""); }
+    }[state.sort];
+    return list.slice().sort(by);
+  }
+
+  function renderTally() {
+    var mine = state.items.filter(function (i) { return !i.example; });
+    var src = mine.length ? mine : state.items;
+    var ym = today().slice(0, 7);
+    $("tTotal").textContent = src.length;
+    $("tMonth").textContent = src.filter(function (i) { return (i.watchedAt || i.createdAt || "").slice(0, 7) === ym; }).length;
+    $("tFav").textContent = src.filter(function (i) { return i.fav; }).length;
+    var counts = {}; src.forEach(function (i) { counts[i.category] = (counts[i.category] || 0) + 1; });
+    var top = Object.keys(counts).sort(function (a, b) { return counts[b] - counts[a]; })[0];
+    $("tTop").textContent = top ? catLabel(top) : "–";
+  }
+
+  function renderChips() {
+    var box = $("chips"); box.textContent = "";
+    var counts = { all: state.items.length, fav: 0 };
+    state.items.forEach(function (i) { counts[i.category] = (counts[i.category] || 0) + 1; if (i.fav) counts.fav++; });
+    /* reviews.js 에서 지운 카테고리를 쓰는 기록이 남아 있으면 그 이름 그대로 칩을 보여준다 */
+    var extra = Object.keys(counts).filter(function (k) {
+      return k !== "all" && k !== "fav" && k !== "undefined" && !CATS.some(function (c) { return c.id === k; });
+    }).map(function (k) { return { id: k, label: k }; });
+    [{ id: "all", label: "전체" }, { id: "fav", label: "★ 즐겨찾기" }].concat(CATS, extra).forEach(function (c) {
+      if (c.id !== "all" && !counts[c.id]) return;
+      box.appendChild(el("button", { type: "button", class: "chip", "aria-pressed": String(state.filter === c.id),
+        onclick: function () { if (state.filter !== c.id) state.sub = ""; state.filter = c.id; render(); } }, [el("span", { class: "lbl", "data-text": c.label, text: c.label }), el("span", { class: "n", text: String(counts[c.id] || 0) })]));
+    });
+    /* 고른 카테고리에 하위 카테고리가 있으면 한 단계씩 아래 줄에 보여준다 */
+    var inCat = state.items.filter(function (i) { return i.category === state.filter; });
+    var sel = splitPath(state.sub);
+    while (sel.length && !inCat.some(function (i) { return underPath(i.sub, sel.join("/")); })) sel.pop();
+    state.sub = sel.join("/");
+    for (var level = 0; level <= sel.length; level++) {
+      var prefix = sel.slice(0, level).join("/");
+      var options = childrenOf(nodeAt(state.filter, prefix)).map(function (s) { return { id: s.id, label: s.label }; });
+      inCat.forEach(function (i) {
+        var p = splitPath(i.sub);
+        if (p.length > level && p.slice(0, level).join("/") === prefix && !options.some(function (o) { return o.id === p[level]; }))
+          options.push({ id: p[level], label: p[level] });
+      });
+      var countUnder = function (path) { return inCat.filter(function (i) { return underPath(i.sub, path); }).length; };
+      options = options.filter(function (o) { return countUnder(joinPath(prefix, o.id)); });
+      if (!options.length) break;
+      var row = el("div", { class: "subrow", role: "group", style: "padding-left:" + (4 + level * 20) + "px",
+        "aria-label": [catLabel(state.filter)].concat(walk(state.filter, prefix).map(function (s) { return s.label; })).join(" · ") + " 세부 분류" });
+      var chosen = sel[level] || "";
+      [{ id: "", label: "전체" }].concat(options).forEach(function (o) {
+        var target = o.id ? joinPath(prefix, o.id) : prefix;
+        row.appendChild(el("button", { type: "button", class: "chip", "aria-pressed": String(chosen === o.id),
+          onclick: function () { state.sub = target; render(); } },
+          [el("span", { class: "lbl", "data-text": o.label, text: o.label }), el("span", { class: "n", text: String(countUnder(target)) })]));
+      });
+      box.appendChild(row);
+    }
+    if (state.tag) box.appendChild(el("button", { type: "button", class: "chip", "aria-pressed": "true",
+      "aria-label": "#" + state.tag + " 태그 필터 해제",
+      onclick: function () { state.tag = ""; render(); } }, [el("span", { class: "lbl", "data-text": "#" + state.tag + " ✕", text: "#" + state.tag + " ✕" })]));
+  }
+
+  function renderEditbar() {
+    var locked = isLocked();
+    if (!state.edit && !locked) return;
+    var dirty = isDirty(), connected = !!gh.cfg;
+    var st = $("editState"), help = $("editHelp"), act = $("editActions");
+    var text, tone = "";
+    $("editTitle").textContent = locked ? "잠긴 노트" : "편집 모드";
+    if (locked) {
+      st.textContent = ""; st.className = "state";
+      help.textContent = "기록이 비공개 저장소에 있어요. 이 기기에서 GitHub 토큰으로 연결하면 볼 수 있어요.";
+      help.className = "";
+      act.textContent = "";
+      if ($("ghForm").hidden) act.appendChild(el("button", { type: "button", class: "btn small", text: "GitHub 연결", onclick: function () { openGhForm(); render(); } }));
+      $("resetSlot").textContent = "";
+      return;
+    }
+    if (connected) {
+      if (gh.status === "loading") text = "GitHub에서 최신 기록을 불러오는 중…";
+      else if (gh.status === "pending" || gh.status === "saving") text = "GitHub에 저장하는 중…";
+      else if (gh.status === "error") { text = "● GitHub에 저장되지 않음"; tone = " dirty"; }
+      else if (dirty) { text = "● 저장 대기 중"; tone = " dirty"; }
+      else if (gh.status === "saved") { text = "✓ GitHub에 저장됨"; tone = " ok"; }
+      else { text = "✓ GitHub 연결됨 · " + gh.cfg.owner + "/" + gh.cfg.repo; tone = " ok"; }
+      if (gh.status === "error" || gh.message) { help.textContent = gh.message; help.className = "err"; }
+      else if (gh.status === "saved") { help.textContent = "사이트에는 1~2분 뒤에 반영돼요. 바로 안 보이면 잠시 뒤 새로고침해 보세요."; help.className = ""; }
+      else { help.textContent = "기록을 저장·수정·삭제하거나 즐겨찾기를 바꾸면 GitHub의 reviews.js에 바로 저장돼요."; help.className = ""; }
+    } else {
+      text = dirty ? "● 아직 GitHub에 안 올린 변경이 있어요" : "바뀐 내용 없음";
+      tone = dirty ? " dirty" : "";
+      help.textContent = "GitHub와 연결하면 저장할 때마다 사이트에 바로 올라가요. 연결하지 않으면 고친 내용은 이 브라우저에만 임시 저장되고, ‘reviews.js 내려받기’로 받은 파일을 직접 올려야 해요.";
+      help.className = "";
+    }
+    st.textContent = text; st.className = "state" + tone;
+
+    act.textContent = "";
+    if (connected) {
+      if (gh.status === "error") act.appendChild(el("button", { type: "button", class: "btn small", text: "다시 시도",
+        onclick: function () { gh.message = ""; if (gh.remote && isDirty()) ghPush(); else ghSync(); } }));
+      act.appendChild(el("button", { type: "button", class: "btn small ghost", text: "파일로 내려받기", onclick: doExport }));
+      act.appendChild(el("button", { type: "button", class: "textbtn", text: "연결 해제", onclick: function () { state.confirmReset = "disconnect"; render(); } }));
+    } else {
+      act.appendChild(el("button", { type: "button", class: "btn small", text: "GitHub 연결", onclick: openGhForm }));
+      act.appendChild(el("button", { type: "button", class: "btn small ghost", text: "reviews.js 내려받기", onclick: doExport }));
+      act.appendChild(el("button", { type: "button", class: "btn small ghost", text: "내용 복사", onclick: doCopy }));
+    }
+
+    var slot = $("resetSlot"); slot.textContent = "";
+    var ex = state.items.filter(function (i) { return i.example; }).length;
+    if (state.confirmReset === "disconnect") {
+      slot.appendChild(el("span", { class: "confirm" }, ["이 브라우저에서 GitHub 연결을 해제할까요? 저장된 토큰이 지워져요." + (BASE ? "" : " 이 기기에서는 기록도 안 보이게 돼요."),
+        el("button", { type: "button", class: "btn small danger", text: "해제", onclick: function () { state.confirmReset = false; disconnectGh(); render(); } }),
+        el("button", { type: "button", class: "btn small ghost", text: "취소", onclick: function () { state.confirmReset = false; render(); } })]));
+    } else if (state.confirmReset === "examples") {
+      slot.appendChild(el("span", { class: "confirm" }, ["예시 " + ex + "장을 지울까요?",
+        el("button", { type: "button", class: "btn small danger", text: "지우기", onclick: function () { state.items = state.items.filter(function (i) { return !i.example; }); state.confirmReset = false; commit(); } }),
+        el("button", { type: "button", class: "btn small ghost", text: "취소", onclick: function () { state.confirmReset = false; render(); } })]));
+    } else if (state.confirmReset === "all") {
+      slot.appendChild(el("span", { class: "confirm" }, ["올리지 않은 변경을 모두 버릴까요?",
+        el("button", { type: "button", class: "btn small danger", text: "버리기", onclick: function () {
+          clearTimeout(gh.timer); clearDraft(); state.confirmReset = false;
+          state.items = clone(syncBase()); if (gh.status === "error" || gh.status === "pending") gh.status = gh.remote ? "ready" : gh.status;
+          render(); } }),
+        el("button", { type: "button", class: "btn small ghost", text: "취소", onclick: function () { state.confirmReset = false; render(); } })]));
+    } else {
+      if (ex) slot.appendChild(el("button", { type: "button", class: "textbtn", text: "예시 지우기", onclick: function () { state.confirmReset = "examples"; render(); } }));
+      if (dirty && (!connected || gh.status === "error")) slot.appendChild(el("button", { type: "button", class: "textbtn", text: "변경 버리기", onclick: function () { state.confirmReset = "all"; render(); } }));
+    }
+  }
+
+  function favControl(it) {
+    if (state.edit) return el("button", { type: "button", class: "favbtn", "aria-pressed": String(!!it.fav),
+      text: it.fav ? "★ 즐겨찾기" : "☆ 즐겨찾기",
+      onclick: function () { state.items = state.items.map(function (x) { return x.id === it.id ? Object.assign({}, x, { fav: !x.fav }) : x; }); commit(); } });
+    return it.fav ? el("span", { class: "favmark", text: "★ 즐겨찾기" }) : el("span");
+  }
+
+  function cover(it, big) {
+    var url = safeUrl(it.url || "");
+    var thumb = thumbFor(it);
+    var yt = !!youtubeId(it.url);
+    var color = "var(--cover-" + (hash(it.title || it.id || "") % 6 + 1) + ")";
+    var gen = el("div", { class: "gen", style: "background-color:" + color }, [
+      el("span", { class: "glyph", "aria-hidden": "true", text: (it.title || "?").trim().charAt(0) })
+    ]);
+    var kids = [gen];
+    if (thumb) {
+      var ytId = youtubeId(it.url);
+      /* 큰 화면에서는 고화질 썸네일을 먼저 시도하고, 없으면(120px 회색 대체 이미지) 기본 화질로 */
+      var src = big && ytId && !safeUrl(it.image || "") ? "https://img.youtube.com/vi/" + ytId + "/maxresdefault.jpg" : thumb;
+      var img = el("img", { src: src, alt: "", loading: big ? "eager" : "lazy", referrerpolicy: "no-referrer" });
+      var fallback = function () { if (img.src !== thumb) img.src = thumb; else img.remove(); };
+      img.addEventListener("error", fallback);
+      img.addEventListener("load", function () { if (img.naturalWidth <= 120 && img.src !== thumb) img.src = thumb; });
+      kids.push(img);
+    }
+    kids.push(el("div", { class: "label" }, [el("span", { text: fullCatLabel(it) }), yt ? el("span", { text: "YouTube" }) : null]));
+    if (it.example) kids.push(el("span", { class: "ex", text: "예시" }));
+    if (it.fav) kids.push(el("span", { class: "favbadge", "aria-label": "즐겨찾기", text: "★" }));
+    if (big && url) {
+      kids.push(el("span", { class: "play", "aria-hidden": "true" }));
+      return el("a", { class: "cover big", href: url, target: "_blank", rel: "noopener noreferrer", "aria-label": (it.title || "") + " 보러 가기" }, kids);
+    }
+    return el("div", { class: "cover" + (big ? " big" : "") }, kids);
+  }
+
+  /* 카드 미리보기용: ■ 소제목을 빼고 본문만 이어 붙인다 */
+  function plainBody(text) {
+    var isHead = headingTest();
+    return (text || "").split("\n").filter(function (l) { return !isHead(l); }).join(" ").replace(/\s+/g, " ").trim();
+  }
+
+  function card(it) {
+    var url = safeUrl(it.url || "");
+    var preview = plainBody(it.body);
+    var kids = [
+      el("h3", { class: "title" }, [el("button", { type: "button", class: "titlebtn", text: it.title || "(제목 없음)", onclick: function () { openReader(it.id); } })]),
+      el("div", { class: "meta" }, [favControl(it), el("span", { class: "date", text: fmtDate(it.watchedAt) })]),
+      it.oneLine ? el("p", { class: "one", text: "“" + it.oneLine + "”" }) : null,
+      preview ? el("p", { class: "preview-text", text: preview }) : null
+    ];
+    if ((it.tags || []).length) kids.push(el("div", { class: "tags" }, it.tags.map(function (t) {
+      return el("button", { type: "button", class: "tag", text: "#" + t, onclick: function () { state.tag = t; render(); } });
+    })));
+    kids.push(el("div", { class: "actions" }, [
+      url ? el("a", { class: "link", href: url, target: "_blank", rel: "noopener noreferrer", text: youtubeId(url) ? "▶ 유튜브에서 보기" : "보러 가기 ↗" }) : null,
+      el("span", { class: "spacer" }),
+      el("button", { type: "button", class: "textbtn", text: "크게 보기", onclick: function () { openReader(it.id); } }),
+      state.edit ? el("button", { type: "button", class: "textbtn", text: "수정", onclick: function () { openSheet(it); } }) : null,
+      state.edit ? el("button", { type: "button", class: "textbtn", text: "삭제", onclick: function () { state.confirmId = it.id; render(); } }) : null
+    ]));
+    if (state.confirmId === it.id) kids.push(el("div", { class: "confirm" }, [
+      "이 기록을 지울까요?", el("span", { class: "spacer" }),
+      el("button", { type: "button", class: "btn small danger", text: "지우기", onclick: function () {
+        state.items = state.items.filter(function (i) { return i.id !== it.id; }); commit(); } }),
+      el("button", { type: "button", class: "btn small ghost", text: "취소", onclick: function () { state.confirmId = null; render(); } })
+    ]));
+    var art = el("article", { class: "card", "data-id": it.id }, [cover(it, false), el("div", { class: "body" }, kids)]);
+    /* 카드 어디를 눌러도 크게 보기 (버튼·링크·삭제 확인 영역은 제외) */
+    art.addEventListener("click", function (e) {
+      if (e.target.closest("a, button, .confirm")) return;
+      openReader(it.id);
+    });
+    return art;
+  }
+
+  /* ---------- 크게 보기 ---------- */
+  var readerReturnFocus = null;
+  function openReader(id) {
+    readerReturnFocus = document.activeElement;
+    state.readerId = id; state.confirmId = null;
+    renderReader();
+    setTimeout(function () { var c = $("readerClose"); if (c) c.focus(); }, 0);
+  }
+  function closeReader() {
+    var id = state.readerId;
+    state.readerId = null; renderReader();
+    var back = null;
+    try { back = id && document.querySelector('.card[data-id="' + CSS.escape(id) + '"] .titlebtn'); } catch (e) {}
+    var target = back || readerReturnFocus;
+    if (target && target.focus) target.focus();
+  }
+  function stepReader(dir) {
+    var list = visible(), i = list.findIndex(function (x) { return x.id === state.readerId; });
+    if (i < 0) return;
+    var next = list[i + dir];
+    if (next) { state.readerId = next.id; renderReader(); $("reader").scrollTop = 0; }
+  }
+  function renderReader() {
+    var box = $("reader"), panel = $("readerPanel");
+    var it = state.readerId ? state.items.find(function (x) { return x.id === state.readerId; }) : null;
+    if (!it) { state.readerId = null; box.hidden = true; document.body.style.overflow = ""; return; }
+    var list = visible(), i = list.findIndex(function (x) { return x.id === it.id; });
+    var url = safeUrl(it.url || "");
+    panel.textContent = "";
+    panel.appendChild(el("div", { class: "reader-top" }, [
+      el("button", { type: "button", class: "navbtn", "aria-label": "이전 후기", disabled: i <= 0 ? "disabled" : null, text: "‹", onclick: function () { stepReader(-1); } }),
+      el("span", { class: "reader-count", text: i >= 0 ? (i + 1) + " / " + list.length : "" }),
+      el("button", { type: "button", class: "navbtn", "aria-label": "다음 후기", disabled: i < 0 || i >= list.length - 1 ? "disabled" : null, text: "›", onclick: function () { stepReader(1); } }),
+      el("span", { class: "spacer" }),
+      el("button", { type: "button", class: "navbtn close", id: "readerClose", "aria-label": "닫기", text: "✕", onclick: closeReader })
+    ]));
+    panel.appendChild(cover(it, true));
+    var inner = el("div", { class: "reader-body" }, [
+      el("p", { class: "reader-meta" }, [fullCatLabel(it), it.watchedAt ? " · " + fmtDate(it.watchedAt) : "", it.fav ? " · ★ 즐겨찾기" : ""]),
+      el("h2", { class: "reader-title", id: "readerTitle", text: it.title || "(제목 없음)" }),
+      it.oneLine ? el("p", { class: "reader-one", text: "“" + it.oneLine + "”" }) : null,
+      it.body ? bodyNode(it.body) : el("p", { class: "reader-empty", text: "아직 적은 후기가 없어요." })
+    ]);
+    if ((it.tags || []).length) inner.appendChild(el("div", { class: "tags" }, it.tags.map(function (t) {
+      return el("button", { type: "button", class: "tag", text: "#" + t, onclick: function () { state.tag = t; closeReader(); render(); } });
+    })));
+    inner.appendChild(el("div", { class: "actions" }, [
+      url ? el("a", { class: "btn small", href: url, target: "_blank", rel: "noopener noreferrer", text: youtubeId(url) ? "▶ 유튜브에서 보기" : "보러 가기 ↗" }) : null,
+      el("span", { class: "spacer" }),
+      state.edit ? favControl(it) : null,
+      state.edit ? el("button", { type: "button", class: "btn small ghost", text: "수정", onclick: function () { openSheet(it); } }) : null
+    ]));
+    panel.appendChild(inner);
+    box.hidden = false;
+    document.body.style.overflow = "hidden";
+  }
+  $("reader").addEventListener("click", function (e) { if (e.target === $("reader")) closeReader(); });
+  document.addEventListener("keydown", function (e) {
+    if (!$("overlay").hidden || $("reader").hidden) return;
+    if (e.key === "Escape") closeReader();
+    else if (e.key === "ArrowLeft") stepReader(-1);
+    else if (e.key === "ArrowRight") stepReader(1);
+  });
+
+  function render() {
+    var locked = isLocked();
+    document.body.classList.toggle("locked", locked);
+    renderTally(); renderChips(); renderEditbar();
+    var status = $("status"); status.textContent = "";
+    if (!gh.cfg && fileProblem() === "syntax") {
+      var er = window.REVIEWS_ERROR;
+      status.appendChild(el("div", { class: "notice" }, [el("p", { text: "reviews.js " + er.line + "번째 줄 근처를 읽지 못했어요. 쉼표·따옴표·괄호가 빠지거나 한글 입력 상태의 기호(，“ ”)가 들어가지 않았는지 확인해 주세요. (" + er.msg + ")" })]));
+    } else if (!locked && !gh.cfg && !BASE) {
+      status.appendChild(el("div", { class: "notice" }, [el("p", { text: "reviews.js 파일을 찾지 못했어요. index.html과 같은 폴더에 reviews.js가 있는지 확인해 주세요." })]));
+    } else if (gh.cfg && gh.status === "error" && !state.edit) {
+      status.appendChild(el("div", { class: "notice" }, [el("p", {}, [gh.message + " ", el("a", { href: "#edit", text: "편집 모드에서 확인하기" })])]));
+    }
+    var list = visible();
+    var grid = $("grid"); grid.textContent = "";
+    list.forEach(function (it) { grid.appendChild(card(it)); });
+    var slot = $("emptySlot"); slot.textContent = "";
+    if (gh.cfg && !gh.remote && !state.items.length) {
+      if (gh.status === "loading") slot.appendChild(el("section", { class: "empty" }, [el("p", { text: "기록을 불러오는 중…" })]));
+    } else if (!state.items.length) {
+      slot.appendChild(el("section", { class: "empty" }, [
+        el("h2", { text: "아직 기록이 없어요" }),
+        el("p", { text: state.edit ? "‘+ 새 기록’으로 첫 카드를 써 보세요." : "곧 첫 기록이 올라올 거예요." }),
+        state.edit ? el("button", { type: "button", class: "btn", text: "+ 첫 기록 쓰기", onclick: function () { openSheet(null); } }) : null
+      ]));
+    } else if (!list.length) {
+      slot.appendChild(el("section", { class: "empty" }, [el("h2", { text: "조건에 맞는 기록이 없어요" }), el("p", { text: "검색어나 분류 필터를 바꿔 보세요." })]));
+    }
+    if (state.readerId) renderReader();
+  }
+
+  /* ---------- 작성 / 수정 시트 ---------- */
+  setCats(CATS);
+  function updatePreview() {
+    var t = thumbFor({ url: $("fUrl").value.trim(), image: $("fImage").value.trim() });
+    $("fPreview").hidden = !t;
+    if (t) $("fPreviewImg").src = t;
+  }
+  $("fPreviewImg").addEventListener("error", function () { $("fPreview").hidden = true; });
+  $("fUrl").addEventListener("input", function () {
+    updatePreview();
+    var hasVideo = CATS.some(function (c) { return c.id === "video"; });
+    if (hasVideo && youtubeId(this.value.trim()) && !state.editing && $("fCat").value !== "music" && $("fCat").value !== "video") {
+      $("fCat").value = "video"; $("fCat").dispatchEvent(new Event("change"));
+    }
+  });
+  $("fImage").addEventListener("input", updatePreview);
+
+  /* 양식: 새 기록에서 분류를 고르면 그 분류의 양식으로 후기 칸을 채운다.
+     이미 직접 쓴 내용이 있으면 덮어쓰지 않는다. */
+  var lastTpl = "";
+  /* 세부 분류 선택칸들에서 고른 경로 ("lecture/math") */
+  function formSubPath() {
+    var sels = $("fSubs").querySelectorAll("select"), parts = [];
+    for (var i = 0; i < sels.length && sels[i].value; i++) parts.push(sels[i].value);
+    return parts.join("/");
+  }
+  function curTemplate() { return templateFor($("fCat").value, formSubPath()); }
+  function updateTplBtn() { $("tplBtn").hidden = !curTemplate(); }
+  /* 고른 분류에 맞춰 세부 분류 선택칸을 단계별로 만든다. 고른 단계 아래에 더 나눌 게 있으면 칸이 하나 더 생긴다 */
+  function fillSubs(path) {
+    var box = $("fSubs"), cat = $("fCat").value, want = splitPath(path), prefix = [];
+    box.textContent = "";
+    for (var level = 0; ; level++) {
+      var opts = childrenOf(nodeAt(cat, prefix.join("/")));
+      var chosen = want[level] || "";
+      if (!opts.length && !chosen) break;
+      var sel = el("select", { id: "fSub" + level, "aria-label": "세부 분류 " + (level + 1) + "단계" });
+      sel.appendChild(el("option", { value: "", text: level ? "더 나누지 않음" : "선택 안 함" }));
+      opts.forEach(function (o) { sel.appendChild(el("option", { value: o.id, text: o.label })); });
+      /* 설정에서 지워진 분류를 쓰던 기록은 그 이름을 그대로 남겨둔다 */
+      if (chosen && !opts.some(function (o) { return o.id === chosen; })) sel.appendChild(el("option", { value: chosen, text: chosen }));
+      sel.value = chosen;
+      (function (lv) {
+        sel.addEventListener("change", function () {
+          var sels = box.querySelectorAll("select"), p = [];
+          for (var i = 0; i <= lv && sels[i].value; i++) p.push(sels[i].value);
+          fillSubs(p.join("/")); applyTemplate();
+          var again = $("fSub" + lv); if (again) again.focus();
+        });
+      })(level);
+      box.appendChild(el("div", { class: "subsel" + (level ? " nested" : ""), style: level ? "padding-left:" + ((level - 1) * 18) + "px" : null }, [sel]));
+      if (!chosen) break;
+      prefix.push(chosen);
+    }
+    $("fSubWrap").hidden = !box.children.length;
+  }
+  function applyTemplate() {
+    var t = curTemplate(), body = $("fBody");
+    if (!state.editing && (body.value.trim() === "" || body.value === lastTpl)) body.value = t;
+    lastTpl = t; updateTplBtn();
+  }
+  $("fCat").addEventListener("change", function () { fillSubs(""); applyTemplate(); });
+  $("tplBtn").addEventListener("click", function () {
+    var t = curTemplate(), body = $("fBody");
+    body.value = body.value.trim() ? body.value.replace(/\s+$/, "") + "\n\n" + t : t;
+    lastTpl = body.value; body.focus();
+  });
+
+  function openSheet(it) {
+    state.editing = it ? it.id : null;
+    $("formTitle").textContent = it ? "기록 수정" : "새 기록";
+    $("fUrl").value = it ? it.url || "" : "";
+    $("fTitle").value = it ? it.title || "" : "";
+    var fallbackCat = (state.filter !== "all" && state.filter !== "fav") ? state.filter : CATS[0].id;
+    $("fCat").value = it ? it.category || fallbackCat : fallbackCat;
+    if (!$("fCat").value) $("fCat").value = CATS[0].id;
+    fillSubs(it ? it.sub : (state.filter === $("fCat").value ? state.sub : ""));
+    $("fDate").value = it ? it.watchedAt || "" : today();
+    $("fOne").value = it ? it.oneLine || "" : "";
+    lastTpl = it ? "" : curTemplate();
+    $("fBody").value = it ? it.body || "" : lastTpl;
+    updateTplBtn();
+    $("fTags").value = it ? (it.tags || []).join(", ") : "";
+    $("fImage").value = it ? it.image || "" : "";
+    $("fFav").checked = !!(it && it.fav); updatePreview();
+    $("fErr").hidden = true;
+    $("overlay").hidden = false;
+    setTimeout(function () { (it ? $("fTitle") : $("fUrl")).focus(); }, 0);
+  }
+  function closeSheet() { $("overlay").hidden = true; state.editing = null; }
+  $("cancelBtn").addEventListener("click", closeSheet);
+  $("overlay").addEventListener("click", function (e) { if (e.target === $("overlay")) closeSheet(); });
+  document.addEventListener("keydown", function (e) { if (e.key === "Escape" && !$("overlay").hidden) closeSheet(); });
+  $("addBtn").addEventListener("click", function () { openSheet(null); });
+
+  $("form").addEventListener("submit", function (e) {
+    e.preventDefault();
+    var err = $("fErr");
+    function fail(msg, field) { err.textContent = msg; err.hidden = false; $(field).focus(); }
+    var title = $("fTitle").value.trim(), url = $("fUrl").value.trim(), image = $("fImage").value.trim();
+    if (!title) return fail("제목을 적어 주세요.", "fTitle");
+    if (url && !safeUrl(url)) return fail("링크는 https:// 로 시작하는 주소로 적어 주세요.", "fUrl");
+    if (image && !safeUrl(image)) return fail("이미지 주소는 https:// 로 시작해야 해요.", "fImage");
+    var prev = null;
+    for (var i = 0; i < state.items.length; i++) if (state.items[i].id === state.editing) prev = state.items[i];
+    var item = {
+      id: prev ? prev.id : Date.now().toString(36),
+      title: title, url: url, category: $("fCat").value, watchedAt: $("fDate").value,
+      fav: $("fFav").checked, oneLine: $("fOne").value.trim(), body: stripEmptySections($("fBody").value),
+      tags: $("fTags").value.split(/[,，#]/).map(function (t) { return t.trim(); }).filter(Boolean).slice(0, 12),
+      createdAt: prev ? prev.createdAt : new Date().toISOString()
+    };
+    if (image) item.image = image;
+    var subPath = formSubPath();
+    if (subPath) item.sub = subPath;
+    if (prev) state.items = state.items.map(function (x) { return x.id === prev.id ? item : x; });
+    else state.items.push(item);
+    closeSheet(); commit();
+  });
+
+  /* ---------- 내보내기 ---------- */
+  function fileText(items) {
+    var list = (items || state.items).slice().sort(function (a, b) { return (b.createdAt || "").localeCompare(a.createdAt || ""); });
+    /* 카테고리(와 하위 카테고리·양식)를 사람이 읽고 고치기 쉬운 모양으로 적는다 */
+    function catText(c, pad) {
+      var head = pad + "{ \"id\": " + JSON.stringify(c.id) + ", \"label\": " + JSON.stringify(c.label);
+      var parts = [];
+      if (c.template) {
+        var t = Array.isArray(c.template) ? c.template : String(c.template).split("\n");
+        parts.push(pad + "  \"template\": [\n" + t.map(function (s) { return pad + "    " + JSON.stringify(s); }).join(",\n") + "\n" + pad + "  ]");
+      }
+      if (Array.isArray(c.sub) && c.sub.length) {
+        parts.push(pad + "  \"sub\": [\n" + c.sub.filter(function (s) { return s && s.id; }).map(function (s) { return catText(s, pad + "    "); }).join(",\n") + "\n" + pad + "  ]");
+      }
+      return parts.length ? head + ",\n" + parts.join(",\n") + "\n" + pad + "}" : head + " }";
+    }
+    var cats = CATS.map(function (c) { return catText(c, "  "); }).join(",\n");
+    return "// 하경의 감상 노트 데이터 파일\n" +
+           "// 사이트 주소 뒤에 #edit 을 붙여 편집 모드에서 GitHub와 연결하면, 기록을 저장할 때마다 이 파일이 자동으로 바뀌어요.\n" +
+           "// 사이트 문구·카테고리·양식은 이 파일에서 직접 고치면 돼요.\n\n" +
+           "// ── 사이트 문구 ──\n" +
+           "// 따옴표 안의 글자만 바꾸면 돼요. 빈 칸(\"\")으로 두면 그 줄은 화면에서 숨겨져요.\n" +
+           "window.SITE = {\n" +
+           "  \"title\": " + JSON.stringify(SITE.title != null ? SITE.title : $("siteTitle").textContent) + ",      // 큰 제목 (브라우저 탭 이름도 같이 바뀌어요)\n" +
+           "  \"eyebrow\": " + JSON.stringify(SITE.eyebrow != null ? SITE.eyebrow : $("siteEyebrow").textContent) + ",    // 제목 위 작은 글씨\n" +
+           "  \"intro\": " + JSON.stringify(SITE.intro != null ? SITE.intro : $("siteIntro").textContent) + ",      // 제목 아래 소개 문구\n" +
+           "  \"footer\": " + JSON.stringify(SITE.footer != null ? SITE.footer : $("footNote").textContent) + "      // 맨 아래 작은 글씨\n" +
+           "};\n\n" +
+           "// ── 카테고리 ──\n" +
+           "// id: 기록과 연결되는 영문 이름 (한 번 정하면 바꾸지 않기)\n" +
+           "// label: 화면에 보이는 이름 (자유롭게 바꿔도 됨)\n" +
+           "// 순서대로 필터와 작성 화면에 나와요.\n" +
+           "// template: (선택) 이 분류로 새 기록을 쓸 때 후기 칸에 미리 채워지는 양식. 한 줄에 하나씩, ■ 로 시작하면 소제목\n" +
+           "// sub: (선택) 하위 카테고리 목록. 모양은 카테고리와 같고, 하위 카테고리에도 template 을 붙일 수 있어요\n" +
+           "window.CATEGORIES = [\n" + cats + "\n];\n\n" +
+           "// ── 기록 ──\n" +
+           "window.REVIEWS = " + JSON.stringify(list, null, 2) + ";\n";
+  }
+  function doExport() {
+    var blob = new Blob([fileText()], { type: "text/javascript;charset=utf-8" });
+    var a = el("a", { href: URL.createObjectURL(blob), download: "reviews.js" });
+    document.body.appendChild(a); a.click(); a.remove();
+    setTimeout(function () { URL.revokeObjectURL(a.href); }, 1000);
+  }
+  function doCopy(e) {
+    var btn = e.currentTarget, text = fileText();
+    function done(msg) { btn.textContent = msg; setTimeout(function () { btn.textContent = "내용 복사"; }, 1600); }
+    if (navigator.clipboard && navigator.clipboard.writeText) navigator.clipboard.writeText(text).then(function () { done("복사됨"); }, function () { done("복사 실패"); });
+    else done("복사 실패");
+  }
+
+  /* ---------- 검색 / 정렬 ---------- */
+  var qTimer;
+  $("q").addEventListener("input", function () { var v = this.value; clearTimeout(qTimer); qTimer = setTimeout(function () { state.q = v; render(); }, 120); });
+  try { var savedSort = localStorage.getItem("hakyung-notes-sort"); if (savedSort && /^(new|watched|fav)$/.test(savedSort)) { state.sort = savedSort; $("sort").value = savedSort; } } catch (e) {}
+  $("sort").addEventListener("change", function () { state.sort = this.value; try { localStorage.setItem("hakyung-notes-sort", this.value); } catch (e) {} render(); });
+
+  load();
+})();
+</script>
+</body>
+</html>
