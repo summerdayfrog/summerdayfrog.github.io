@@ -87,6 +87,8 @@ h1 { font-family: var(--f-display); font-weight: 800; font-size: clamp(36px, 6.5
 .chip { border: 0; background: none; padding: 4px 0; font-size: 14.5px; color: var(--muted); font-weight: 400; }
 .chip:hover { color: var(--ink); }
 .chip[aria-pressed="true"] { color: var(--ink); font-weight: 700; }
+.chip.zero { opacity: .55; }
+.chip.zero[aria-pressed="true"], .chip.zero:hover { opacity: 1; }
 /* 볼드로 바뀌어도 옆 항목이 밀리지 않도록 볼드 폭만큼 자리를 미리 잡아둔다 */
 .chip .lbl { display: inline-flex; flex-direction: column; }
 .chip .lbl::after { content: attr(data-text); font-weight: 700; height: 0; visibility: hidden; overflow: hidden; user-select: none; }
@@ -794,14 +796,17 @@ body.locked .tally, body.locked .bar, body.locked #grid, body.locked #emptySlot,
       return k !== "all" && k !== "fav" && k !== "undefined" && !CATS.some(function (c) { return c.id === k; });
     }).map(function (k) { return { id: k, label: k }; });
     [{ id: "all", label: "전체" }, { id: "fav", label: "★ 즐겨찾기" }].concat(CATS, extra).forEach(function (c) {
-      if (c.id !== "all" && !counts[c.id]) return;
-      box.appendChild(el("button", { type: "button", class: "chip", "aria-pressed": String(state.filter === c.id),
+      /* reviews.js 에 적은 카테고리는 기록이 없어도 보여준다 (즐겨찾기는 하나라도 있을 때만) */
+      if (c.id === "fav" && !counts.fav) return;
+      box.appendChild(el("button", { type: "button", class: "chip" + (c.id !== "all" && !counts[c.id] ? " zero" : ""), "aria-pressed": String(state.filter === c.id),
         onclick: function () { if (state.filter !== c.id) state.sub = ""; state.filter = c.id; render(); } }, [el("span", { class: "lbl", "data-text": c.label, text: c.label }), el("span", { class: "n", text: String(counts[c.id] || 0) })]));
     });
     /* 고른 카테고리에 하위 카테고리가 있으면 한 단계씩 아래 줄에 보여준다 */
     var inCat = state.items.filter(function (i) { return i.category === state.filter; });
     var sel = splitPath(state.sub);
-    while (sel.length && !inCat.some(function (i) { return underPath(i.sub, sel.join("/")); })) sel.pop();
+    /* 고른 경로가 설정에서도 사라지고 기록도 없으면 한 단계씩 위로 */
+    while (sel.length && !(walk(state.filter, sel.join("/")).every(function (s) { return s.node; }) ||
+                           inCat.some(function (i) { return underPath(i.sub, sel.join("/")); }))) sel.pop();
     state.sub = sel.join("/");
     for (var level = 0; level <= sel.length; level++) {
       var prefix = sel.slice(0, level).join("/");
@@ -812,14 +817,13 @@ body.locked .tally, body.locked .bar, body.locked #grid, body.locked #emptySlot,
           options.push({ id: p[level], label: p[level] });
       });
       var countUnder = function (path) { return inCat.filter(function (i) { return underPath(i.sub, path); }).length; };
-      options = options.filter(function (o) { return countUnder(joinPath(prefix, o.id)); });
       if (!options.length) break;
       var row = el("div", { class: "subrow", role: "group", style: "padding-left:" + (4 + level * 20) + "px",
         "aria-label": [catLabel(state.filter)].concat(walk(state.filter, prefix).map(function (s) { return s.label; })).join(" · ") + " 세부 분류" });
       var chosen = sel[level] || "";
       [{ id: "", label: "전체" }].concat(options).forEach(function (o) {
         var target = o.id ? joinPath(prefix, o.id) : prefix;
-        row.appendChild(el("button", { type: "button", class: "chip", "aria-pressed": String(chosen === o.id),
+        row.appendChild(el("button", { type: "button", class: "chip" + (o.id && !countUnder(target) ? " zero" : ""), "aria-pressed": String(chosen === o.id),
           onclick: function () { state.sub = target; render(); } },
           [el("span", { class: "lbl", "data-text": o.label, text: o.label }), el("span", { class: "n", text: String(countUnder(target)) })]));
       });
