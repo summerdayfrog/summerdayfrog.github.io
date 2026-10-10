@@ -205,7 +205,10 @@ a.cover:hover .play, a.cover:focus-visible .play { background: var(--accent-stro
 .preview img { width: 100%; height: 100%; object-fit: cover; }
 .row2 { display: grid; grid-template-columns: 1fr 1fr; gap: 12px; }
 @media (max-width: 420px) { .row2 { grid-template-columns: 1fr; } }
-.sheet-actions { display: flex; gap: 8px; justify-content: flex-end; flex-wrap: wrap; padding-top: 4px; }
+.sheet-actions { display: flex; gap: 8px; justify-content: flex-end; align-items: center; flex-wrap: wrap; padding-top: 4px; }
+.autosave { font-size: 12px; color: var(--muted); margin-right: auto; }
+.restore { margin: 0; display: flex; flex-wrap: wrap; align-items: center; gap: 4px 10px; font-size: 13px; background: var(--chip); border-radius: 8px; padding: 8px 12px; }
+.restore .textbtn { padding: 2px 4px; text-decoration: underline; }
 .err { color: var(--danger); font-size: 13px; margin: 0; }
 footer { color: var(--muted); font-size: 12px; font-family: var(--f-mono); display: flex; flex-wrap: wrap; gap: 8px; justify-content: space-between; }
 footer a { color: inherit; }
@@ -303,6 +306,10 @@ body.locked .tally, body.locked .bar, body.locked #grid, body.locked #emptySlot,
 <div class="overlay" id="overlay" hidden>
   <form class="sheet" id="form" novalidate aria-labelledby="formTitle">
     <h2 id="formTitle">새 기록</h2>
+    <p class="restore" id="fRestore" hidden>
+      <span id="fRestoreText">임시 저장된 내용을 불러왔어요.</span>
+      <button type="button" class="textbtn" id="fRestoreDiscard">처음부터 쓰기</button>
+    </p>
     <div class="field">
       <label for="fUrl">링크</label>
       <input id="fUrl" type="url" inputmode="url" placeholder="https://youtu.be/…">
@@ -348,7 +355,8 @@ body.locked .tally, body.locked .bar, body.locked #grid, body.locked #emptySlot,
     </div>
     <p class="err" id="fErr" hidden></p>
     <div class="sheet-actions">
-      <button type="button" class="btn ghost" id="cancelBtn">취소</button>
+      <span class="autosave" id="fSaved" aria-live="polite"></span>
+      <button type="button" class="btn ghost" id="cancelBtn">닫기</button>
       <button type="submit" class="btn save">저장</button>
     </div>
   </form>
@@ -570,7 +578,7 @@ body.locked .tally, body.locked .bar, body.locked #grid, body.locked #emptySlot,
       : document.createTextNode(""));
     render();
     /* GitHub 와 연결된 기기에서는 보기 모드에서도 GitHub 의 최신 기록을 읽는다 (비공개 저장소도 가능) */
-    if (gh.cfg) ghSync();
+    if (gh.cfg) ghSync(); else tryReopenSheet();
   }
   window.addEventListener("hashchange", load);
 
@@ -661,6 +669,7 @@ body.locked .tally, body.locked .bar, body.locked #grid, body.locked #emptySlot,
     gh.status = "loading"; gh.message = ""; render();
     ghLoad(gh.cfg).then(afterRemote, function (e) {
       gh.status = "error"; gh.message = ghMessage(e); render();
+      tryReopenSheet();
     });
   }
   function afterRemote(remote) {
@@ -670,6 +679,7 @@ body.locked .tally, body.locked .bar, body.locked #grid, body.locked #emptySlot,
       state.items = rebase(readDraft(), remote.items);
       writeDraft(); render();
       if (isDirty()) schedulePush(0);
+      tryReopenSheet();
     } else {
       state.items = clone(remote.items); render();
     }
@@ -976,7 +986,7 @@ body.locked .tally, body.locked .bar, body.locked #grid, body.locked #emptySlot,
     if (state.confirmId === it.id) kids.push(el("div", { class: "confirm" }, [
       "이 기록을 지울까요?", el("span", { class: "spacer" }),
       el("button", { type: "button", class: "btn small danger", text: "지우기", onclick: function () {
-        state.items = state.items.filter(function (i) { return i.id !== it.id; }); commit(); } }),
+        state.items = state.items.filter(function (i) { return i.id !== it.id; }); dropSheetDraft(it.id); commit(); } }),
       el("button", { type: "button", class: "btn small ghost", text: "취소", onclick: function () { state.confirmId = null; render(); } })
     ]));
     var art = el("article", { class: "card", "data-id": it.id }, [cover(it, false), el("div", { class: "body" }, kids)]);
@@ -1151,7 +1161,74 @@ body.locked .tally, body.locked .bar, body.locked #grid, body.locked #emptySlot,
     lastTpl = body.value; body.focus();
   });
 
-  function openSheet(it) {
+  /* ---------- 작성 중인 글 자동 임시 저장 ----------
+     새 기록은 "new", 수정 중인 기록은 그 기록의 id 로 따로 보관한다.
+     저장하면 지우고, 닫기만 하면 남겨 둔다 (다음에 열 때 불러온다). */
+  var SHEET_KEY = DRAFT_KEY + "-writing";
+  function readSheets() { try { return JSON.parse(localStorage.getItem(SHEET_KEY) || "{}") || {}; } catch (e) { return {}; } }
+  function writeSheets(all) {
+    try {
+      if (Object.keys(all.drafts || {}).length || all.open) localStorage.setItem(SHEET_KEY, JSON.stringify(all));
+      else localStorage.removeItem(SHEET_KEY);
+    } catch (e) {}
+  }
+  function sheetTarget() { return state.editing || "new"; }
+  function readForm() {
+    return { url: $("fUrl").value, title: $("fTitle").value, cat: $("fCat").value, sub: formSubPath(), date: $("fDate").value,
+             fav: $("fFav").checked, one: $("fOne").value, body: $("fBody").value, tags: $("fTags").value, image: $("fImage").value };
+  }
+  var sheetBaseline = null, sheetTimer = null;
+  function saveSheetNow() {
+    clearTimeout(sheetTimer);
+    if ($("overlay").hidden || !state.edit) return;
+    var all = readSheets(), drafts = all.drafts || {}, form = readForm(), t = sheetTarget();
+    /* 연 직후와 똑같으면 저장할 게 없다 */
+    if (sheetBaseline && same(form, sheetBaseline)) delete drafts[t];
+    else drafts[t] = { form: form, savedAt: new Date().toISOString() };
+    all.drafts = drafts; all.open = t;
+    writeSheets(all);
+    if (drafts[t]) {
+      var d = new Date(drafts[t].savedAt);
+      $("fSaved").textContent = "임시 저장됨 " + String(d.getHours()).padStart(2, "0") + ":" + String(d.getMinutes()).padStart(2, "0");
+    }
+  }
+  function scheduleSheetSave() { clearTimeout(sheetTimer); sheetTimer = setTimeout(saveSheetNow, 400); }
+  function dropSheetDraft(t) {
+    var all = readSheets();
+    if (all.drafts) delete all.drafts[t];
+    if (all.open === t) delete all.open;
+    writeSheets(all);
+  }
+  function applyForm(f) {
+    $("fUrl").value = f.url || ""; $("fTitle").value = f.title || "";
+    if (f.cat && catOf(f.cat)) $("fCat").value = f.cat;
+    fillSubs(f.sub || "");
+    $("fDate").value = f.date || ""; $("fFav").checked = !!f.fav; $("fOne").value = f.one || "";
+    $("fBody").value = f.body || ""; $("fTags").value = f.tags || ""; $("fImage").value = f.image || "";
+    lastTpl = curTemplate(); updateTplBtn(); updatePreview();
+  }
+  $("form").addEventListener("input", scheduleSheetSave);
+  $("form").addEventListener("change", scheduleSheetSave);
+  /* 다른 탭·앱으로 넘어가거나 페이지를 떠날 때는 바로 저장 */
+  document.addEventListener("visibilitychange", function () { if (document.visibilityState === "hidden") saveSheetNow(); });
+  window.addEventListener("pagehide", saveSheetNow);
+  $("fRestoreDiscard").addEventListener("click", function () {
+    var t = sheetTarget(), it = state.editing ? state.items.find(function (x) { return x.id === state.editing; }) : null;
+    dropSheetDraft(t);
+    openSheet(it || null, true);
+  });
+  /* 페이지가 새로 열렸을 때 쓰던 화면이 열려 있었다면 다시 연다 */
+  var reopenPending = true;
+  function tryReopenSheet() {
+    if (!reopenPending || !state.edit || !$("overlay").hidden) return;
+    var all = readSheets(), t = all.open;
+    if (!t || !(all.drafts || {})[t]) { reopenPending = false; return; }
+    if (t === "new") { reopenPending = false; openSheet(null); return; }
+    var it = state.items.find(function (x) { return x.id === t; });
+    if (it) { reopenPending = false; openSheet(it); }
+  }
+
+  function openSheet(it, skipRestore) {
     state.editing = it ? it.id : null;
     $("formTitle").textContent = it ? "기록 수정" : "새 기록";
     $("fUrl").value = it ? it.url || "" : "";
@@ -1169,11 +1246,29 @@ body.locked .tally, body.locked .bar, body.locked #grid, body.locked #emptySlot,
     $("fImage").value = it ? it.image || "" : "";
     $("fFav").checked = !!(it && it.fav); updatePreview();
     $("fErr").hidden = true;
+    sheetBaseline = readForm();
+    /* 임시 저장된 내용이 있으면 불러온다 */
+    var draft = skipRestore ? null : (readSheets().drafts || {})[sheetTarget()];
+    $("fRestore").hidden = !draft; $("fSaved").textContent = "";
+    if (draft) {
+      applyForm(draft.form);
+      var d = new Date(draft.savedAt);
+      $("fRestoreText").textContent = "임시 저장된 내용을 불러왔어요 (" + (d.getMonth() + 1) + "월 " + d.getDate() + "일 " +
+        String(d.getHours()).padStart(2, "0") + ":" + String(d.getMinutes()).padStart(2, "0") + ").";
+    }
     $("overlay").hidden = false;
-    setTimeout(function () { (it ? $("fTitle") : $("fUrl")).focus(); }, 0);
+    var all = readSheets(); all.open = sheetTarget(); writeSheets(all);
+    setTimeout(function () { (it || draft ? $("fTitle") : $("fUrl")).focus(); }, 0);
   }
-  function closeSheet() { $("overlay").hidden = true; state.editing = null; }
-  $("cancelBtn").addEventListener("click", closeSheet);
+  function closeSheet(saved) {
+    if (saved === true) dropSheetDraft(sheetTarget());
+    else {
+      saveSheetNow();
+      var all = readSheets(); delete all.open; writeSheets(all);
+    }
+    $("overlay").hidden = true; state.editing = null;
+  }
+  $("cancelBtn").addEventListener("click", function () { closeSheet(); });
   $("overlay").addEventListener("click", function (e) { if (e.target === $("overlay")) closeSheet(); });
   document.addEventListener("keydown", function (e) { if (e.key === "Escape" && !$("overlay").hidden) closeSheet(); });
   $("addBtn").addEventListener("click", function () { openSheet(null); });
@@ -1200,7 +1295,7 @@ body.locked .tally, body.locked .bar, body.locked #grid, body.locked #emptySlot,
     if (subPath) item.sub = subPath;
     if (prev) state.items = state.items.map(function (x) { return x.id === prev.id ? item : x; });
     else state.items.push(item);
-    closeSheet(); commit();
+    closeSheet(true); commit();
   });
 
   /* ---------- 내보내기 ---------- */
