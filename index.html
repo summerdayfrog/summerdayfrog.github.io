@@ -3,8 +3,8 @@
 <head>
 <meta charset="utf-8">
 <meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
-<title>감상 노트</title>
-<meta name="description" content="감상 노트">
+<title>august archive</title>
+<meta name="description" content="summer is for falling in love">
 <!-- 검색엔진에 나오지 않게 한다 -->
 <meta name="robots" content="noindex, nofollow, noarchive">
 <!-- 글꼴: Pretendard (고딕체) -->
@@ -212,7 +212,7 @@ body.locked .tally, body.locked .bar, body.locked #grid, body.locked #emptySlot,
     <div class="mast-top">
       <div>
         <p class="eyebrow" id="siteEyebrow" hidden></p>
-        <h1 id="siteTitle">감상 노트</h1>
+        <h1 id="siteTitle">august archive</h1>
         <p class="intro" id="siteIntro" hidden></p>
       </div>
       <button class="btn" id="addBtn" type="button" hidden>+ 새 기록</button>
@@ -243,11 +243,11 @@ body.locked .tally, body.locked .bar, body.locked #grid, body.locked #emptySlot,
       <div class="row3">
         <div class="field">
           <label for="ghOwner">GitHub 아이디</label>
-          <input id="ghOwner" autocomplete="off" spellcheck="false" placeholder="hakyung">
+          <input id="ghOwner" autocomplete="off" spellcheck="false" placeholder="summerdayfrog">
         </div>
         <div class="field">
           <label for="ghRepo">저장소 이름</label>
-          <input id="ghRepo" autocomplete="off" spellcheck="false" placeholder="hakyung.github.io">
+          <input id="ghRepo" autocomplete="off" spellcheck="false" placeholder="summerdayfrog.github.io">
         </div>
         <div class="field">
           <label for="ghBranch">브랜치</label>
@@ -269,7 +269,7 @@ body.locked .tally, body.locked .bar, body.locked #grid, body.locked #emptySlot,
       <input id="q" type="search" placeholder="제목, 후기, 태그 검색" aria-label="검색">
       <select id="sort" aria-label="정렬">
         <option value="new">최근 기록순</option>
-        <option value="watched">본 날짜순</option>
+        <option value="watched">날짜순</option>
         <option value="fav">즐겨찾기 먼저</option>
       </select>
     </div>
@@ -280,7 +280,7 @@ body.locked .tally, body.locked .bar, body.locked #grid, body.locked #emptySlot,
   <div id="emptySlot"></div>
 
   <footer>
-    <span id="footNote">감상 노트</span>
+    <span id="footNote">@summerdayfrog</span>
     <span id="editLink"></span>
   </footer>
 </div>
@@ -293,13 +293,13 @@ body.locked .tally, body.locked .bar, body.locked #grid, body.locked #emptySlot,
   <form class="sheet" id="form" novalidate aria-labelledby="formTitle">
     <h2 id="formTitle">새 기록</h2>
     <div class="field">
-      <label for="fUrl">링크 <span class="hint">유튜브 링크를 넣으면 썸네일이 자동으로 붙어요</span></label>
+      <label for="fUrl">링크</label>
       <input id="fUrl" type="url" inputmode="url" placeholder="https://youtu.be/…">
     </div>
     <div class="preview" id="fPreview" hidden><img id="fPreviewImg" alt=""></div>
     <div class="field">
       <label for="fTitle">제목</label>
-      <input id="fTitle" required maxlength="140" placeholder="영상 제목, 앨범명, 책 제목">
+      <input id="fTitle" required maxlength="140" placeholder="영상 제목, 노래 제목, 책 제목">
     </div>
     <div class="row2">
       <div class="field">
@@ -307,7 +307,7 @@ body.locked .tally, body.locked .bar, body.locked #grid, body.locked #emptySlot,
         <select id="fCat"></select>
       </div>
       <div class="field">
-        <label for="fDate">본 날짜</label>
+        <label for="fDate">날짜</label>
         <input id="fDate" type="date">
       </div>
     </div>
@@ -318,7 +318,7 @@ body.locked .tally, body.locked .bar, body.locked #grid, body.locked #emptySlot,
     <label class="check" for="fFav"><input type="checkbox" id="fFav"> ★ 즐겨찾기에 넣기</label>
     <div class="field">
       <label for="fOne">한줄평</label>
-      <input id="fOne" maxlength="80" placeholder="한 문장으로 남기는 첫인상">
+      <input id="fOne" maxlength="80" placeholder="한 문장으로 남기는 감상">
     </div>
     <div class="field">
       <div class="lblrow">
@@ -329,7 +329,7 @@ body.locked .tally, body.locked .bar, body.locked #grid, body.locked #emptySlot,
     </div>
     <div class="field">
       <label for="fTags">태그</label>
-      <input id="fTags" placeholder="쉼표로 구분: 다큐, 과학, 다시볼것">
+      <input id="fTags" placeholder="쉼표로 구분: 미스터리 수사반, 8월, 다시볼것">
     </div>
     <div class="field">
       <label for="fImage">커버 이미지 주소 <span class="hint">(선택) 책 표지 등. 비우면 썸네일이나 색 커버</span></label>
@@ -353,8 +353,8 @@ body.locked .tally, body.locked .bar, body.locked #grid, body.locked #emptySlot,
 <script>
 (function () {
   "use strict";
-  var DRAFT_KEY = "hakyung-notes-draft";
-  var GH_KEY = "hakyung-notes-github";   /* GitHub 토큰은 이 브라우저에만 저장된다 */
+  var DRAFT_KEY = "summerdayfrog-archive_private-draft";
+  var GH_KEY = "summerdayfrog-archive_private-github";   /* GitHub 토큰은 이 브라우저에만 저장된다 */
   /* 카테고리는 reviews.js 의 window.CATEGORIES 에서 읽는다 */
   var CATS = (Array.isArray(window.CATEGORIES) ? window.CATEGORIES : []).filter(function (c) { return c && c.id && c.label; });
   if (!CATS.length) CATS = [
