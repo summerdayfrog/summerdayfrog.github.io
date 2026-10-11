@@ -14,6 +14,9 @@
 <link rel="icon" type="image/png" sizes="192x192" href="icon-192.png">
 <link rel="icon" type="image/svg+xml" href="data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 64 64'%3E%3Cstyle%3Epath%7Bfill:%235E95D4%7D%40media (prefers-color-scheme:dark)%7Bpath%7Bfill:%239CC3EE%7D%7D%3C/style%3E%3Cpath fill-rule='evenodd' d='M32.0 2.0C35.2 20.0 40.6 27.5 53.5 32.0C40.6 36.5 35.2 44.0 32.0 62.0C28.8 44.0 23.4 36.5 10.5 32.0C23.4 27.5 28.8 20.0 32.0 2.0ZM32.0 10.5C32.6 26.4 35.8 31.1 46.5 32.0C35.8 32.9 32.6 37.6 32.0 53.5C31.4 37.6 28.2 32.9 17.5 32.0C28.2 31.1 31.4 26.4 32.0 10.5Z'/%3E%3C/svg%3E">
 <link rel="apple-touch-icon" sizes="180x180" href="apple-touch-icon.png">
+<!-- 휴대폰에 앱으로 설치했을 때의 이름·색·아이콘 (manifest.webmanifest 와 app-icon 그림들을 같이 올려 두세요) -->
+<link rel="manifest" href="manifest.webmanifest">
+<meta name="theme-color" content="#DCEEFB">
 <!-- 글꼴: Pretendard (고딕체) -->
 <link rel="stylesheet" href="https://cdn.jsdelivr.net/gh/orioncactus/pretendard@v1.3.9/dist/web/static/pretendard.min.css">
 <style>
@@ -261,11 +264,26 @@ footer a { color: inherit; }
   .overlay:not([hidden]) .sheet { animation: sheet-in .18s ease-out; }
   @keyframes sheet-in { from { opacity: 0; transform: translateY(8px) scale(.985); } to { opacity: 1; transform: none; } }
 }
+/* 앱으로 열 때의 시작 화면 (설치한 앱에서만) */
+#launch { display: none; position: fixed; inset: 0; z-index: 100; background: #DCEEFB;
+  flex-direction: column; align-items: center; justify-content: center; gap: 20px; transition: opacity .35s ease; }
+#launch svg { width: 84px; height: 84px; display: block; }
+/* 이름은 사이트 맨 위 작은 글씨(eyebrow)와 같은 모양, 소문자로 */
+#launch p { margin: 0; color: #5E95D4; font-family: var(--f-mono); font-weight: 400; font-size: 13px; letter-spacing: .12em; text-transform: lowercase; }
+#launch.out { opacity: 0; pointer-events: none; }
+@media (display-mode: standalone) { #launch { display: flex; } }
+html.standalone #launch { display: flex; }
+html.launched #launch { display: none; }
+@media (prefers-reduced-motion: reduce) { #launch { transition: none; } }
 /* 잠금 화면: 연결 안내만 보여준다 */
 body.locked .tally, body.locked .bar, body.locked #grid, body.locked #emptySlot, body.locked #addBtn { display: none; }
 </style>
 </head>
 <body>
+<div id="launch" aria-hidden="true">
+  <svg viewBox="0 0 64 64"><path fill="#5E95D4" fill-rule="evenodd" d="M32.0 2.0C35.2 20.0 40.6 27.5 53.5 32.0C40.6 36.5 35.2 44.0 32.0 62.0C28.8 44.0 23.4 36.5 10.5 32.0C23.4 27.5 28.8 20.0 32.0 2.0ZM32.0 10.5C32.6 26.4 35.8 31.1 46.5 32.0C35.8 32.9 32.6 37.6 32.0 53.5C31.4 37.6 28.2 32.9 17.5 32.0C28.2 31.1 31.4 26.4 32.0 10.5Z"/></svg>
+  <p id="launchName">august archive</p>
+</div>
 <div class="wrap">
   <header class="mast">
     <div class="mast-top">
@@ -537,6 +555,7 @@ body.locked .tally, body.locked .bar, body.locked #grid, body.locked #emptySlot,
       node.textContent = value; node.hidden = value.trim() === "";
     }
     put("siteTitle", SITE.title);
+    if (typeof SITE.title === "string" && SITE.title.trim()) { var ln = document.getElementById("launchName"); if (ln) ln.textContent = SITE.title; }
     put("siteEyebrow", SITE.eyebrow);
     put("siteIntro", SITE.intro);
     put("footNote", typeof SITE.footer === "string" ? SITE.footer : SITE.title);
@@ -1192,6 +1211,7 @@ body.locked .tally, body.locked .bar, body.locked #grid, body.locked #emptySlot,
       slot.appendChild(el("section", { class: "empty" }, [el("h2", { text: "조건에 맞는 기록이 없어요" }), el("p", { text: "검색어나 분류 필터를 바꿔 보세요." })]));
     }
     if (state.readerId) renderReader();
+    if (!(gh.cfg && gh.status === "loading" && !gh.remote)) hideLaunch();
   }
 
   /* ---------- 작성 / 수정 시트 ---------- */
@@ -1502,6 +1522,22 @@ body.locked .tally, body.locked .bar, body.locked #grid, body.locked #emptySlot,
   $("q").addEventListener("input", function () { var v = this.value; clearTimeout(qTimer); qTimer = setTimeout(function () { state.q = v; render(); }, 120); });
   try { var savedSort = localStorage.getItem("hakyung-notes-sort"); if (savedSort && /^(new|watched|fav)$/.test(savedSort)) { state.sort = savedSort; $("sort").value = savedSort; } } catch (e) {}
   $("sort").addEventListener("change", function () { state.sort = this.value; try { localStorage.setItem("hakyung-notes-sort", this.value); } catch (e) {} render(); });
+
+  /* ---------- 앱으로 열 때의 시작 화면 ----------
+     설치한 앱에서만 보이고, 기록을 다 불러오면(최소 0.7초 뒤) 부드럽게 사라진다 */
+  var launchStart = Date.now(), launchDone = false;
+  if ((window.matchMedia && window.matchMedia("(display-mode: standalone)").matches) || navigator.standalone === true)
+    document.documentElement.classList.add("standalone");
+  function hideLaunch() {
+    if (launchDone) return;
+    launchDone = true;
+    var wait = Math.max(0, 700 - (Date.now() - launchStart));
+    setTimeout(function () {
+      $("launch").classList.add("out");
+      setTimeout(function () { document.documentElement.classList.add("launched"); }, 400);
+    }, wait);
+  }
+  setTimeout(hideLaunch, 3000);   /* 인터넷이 느려도 3초 뒤엔 사라지게 */
 
   load();
 })();
