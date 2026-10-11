@@ -74,6 +74,12 @@ h1 { font-family: var(--f-display); font-weight: 800; font-size: clamp(36px, 6.5
 /* Edit banner */
 .editbar { background: var(--edit); border: 1px solid var(--edit-line); border-radius: 10px; padding: 12px 14px; display: grid; gap: 10px; }
 .editbar p { margin: 0; font-size: 14px; }
+/* 편집 창 최소화(–) / 펼치기(□) */
+.winbtn { width: 28px; height: 28px; flex: none; display: grid; place-items: center; padding: 0; border: 1px solid var(--edit-line);
+  border-radius: 6px; background: transparent; color: var(--ink); font-size: 15px; line-height: 1; }
+.winbtn:hover { background: rgba(255, 255, 255, .55); }
+.editbar.min { padding-block: 8px; }
+.editbar.min #editHelp, .editbar.min #editActions, .editbar.min #ghForm, .editbar.min #resetSlot { display: none; }
 .editbar .row { display: flex; flex-wrap: wrap; gap: 8px; align-items: center; }
 .editbar .state { font-family: var(--f-mono); font-size: 12px; color: var(--muted); }
 .editbar .state.dirty { color: var(--danger); }
@@ -226,6 +232,20 @@ footer a { color: inherit; }
   .card { transition: transform .15s ease; }
   .card:hover { transform: translateY(-2px); }
 }
+/* 컴퓨터·태블릿: 작성 창을 화면 가운데 네모난 창으로 띄우고 뒤를 흐리게 (휴대폰은 지금처럼 옆에서 나오는 화면) */
+@media (min-width: 721px) {
+  .overlay { justify-content: center; align-items: center; padding: 32px;
+    background: rgba(27, 42, 58, .28); -webkit-backdrop-filter: blur(8px); backdrop-filter: blur(8px); }
+  .sheet { width: min(640px, 100%); height: auto; max-height: calc(100vh - 64px); max-height: calc(100dvh - 64px);
+    border-radius: 18px; padding: 28px 30px 0; box-shadow: 0 30px 70px -20px rgba(27, 42, 58, .45); }
+  /* 길게 써도 저장 버튼이 항상 창 아래에 보이게 */
+  .sheet-actions { position: sticky; bottom: 0; z-index: 1; background: var(--paper);
+    margin: 0 -30px; padding: 14px 30px 18px; border-top: 1px solid var(--line); }
+}
+@media (min-width: 721px) and (prefers-reduced-motion: no-preference) {
+  .overlay:not([hidden]) .sheet { animation: sheet-in .18s ease-out; }
+  @keyframes sheet-in { from { opacity: 0; transform: translateY(8px) scale(.985); } to { opacity: 1; transform: none; } }
+}
 /* 잠금 화면: 연결 안내만 보여준다 */
 body.locked .tally, body.locked .bar, body.locked #grid, body.locked #emptySlot, body.locked #addBtn { display: none; }
 </style>
@@ -255,6 +275,7 @@ body.locked .tally, body.locked .bar, body.locked #grid, body.locked #emptySlot,
       <span class="state" id="editState" role="status"></span>
       <span class="spacer"></span>
       <span id="resetSlot"></span>
+      <button type="button" class="winbtn" id="editToggle" aria-label="편집 창 최소화" aria-expanded="true">–</button>
     </div>
     <p id="editHelp"></p>
     <div class="row" id="editActions"></div>
@@ -385,6 +406,15 @@ body.locked .tally, body.locked .bar, body.locked #grid, body.locked #emptySlot,
   "use strict";
   var DRAFT_KEY = "summerdayfrog-archive_private-draft";
   var GH_KEY = "summerdayfrog-archive_private-github";   /* GitHub 토큰은 이 브라우저에만 저장된다 */
+  /* 편집 창을 최소화해 뒀는지 (이 브라우저에 기억) */
+  var BAR_KEY = DRAFT_KEY + "-bar";
+  var editMin = false;
+  try { editMin = localStorage.getItem(BAR_KEY) === "min"; } catch (e) {}
+  document.getElementById("editToggle").addEventListener("click", function () {
+    editMin = !editMin;
+    try { if (editMin) localStorage.setItem(BAR_KEY, "min"); else localStorage.removeItem(BAR_KEY); } catch (e) {}
+    renderEditbar();
+  });
   /* 카테고리는 reviews.js 의 window.CATEGORIES 에서 읽는다 */
   var CATS = (Array.isArray(window.CATEGORIES) ? window.CATEGORIES : []).filter(function (c) { return c && c.id && c.label; });
   if (!CATS.length) CATS = [
@@ -606,7 +636,9 @@ body.locked .tally, body.locked .bar, body.locked #grid, body.locked #emptySlot,
     var link = $("editLink"); link.textContent = "";
     link.appendChild(state.edit
       ? el("a", { href: "#", text: "편집 모드 닫기", onclick: function (e) { e.preventDefault(); history.replaceState(null, "", location.pathname + location.search); load(); } })
-      : document.createTextNode(""));
+      /* 잠금 화면에서는 연결 안내가 대신하니 숨긴다 */
+      : locked ? document.createTextNode("")
+      : el("a", { href: "#edit", text: "편집 모드 열기", onclick: function (e) { e.preventDefault(); history.replaceState(null, "", location.pathname + location.search + "#edit"); load(); window.scrollTo(0, 0); } }));
     render();
     /* GitHub 와 연결된 기기에서는 보기 모드에서도 GitHub 의 최신 기록을 읽는다 (비공개 저장소도 가능) */
     if (gh.cfg) ghSync(); else tryReopenSheet();
@@ -887,6 +919,15 @@ body.locked .tally, body.locked .bar, body.locked #grid, body.locked #emptySlot,
   function renderEditbar() {
     var locked = isLocked();
     if (!state.edit && !locked) return;
+    /* 최소화: 잠금 화면이나 저장 오류일 때는 안내가 필요하니 항상 펼친다 */
+    var min = editMin && !locked && gh.status !== "error";
+    $("editbar").classList.toggle("min", min);
+    var tg = $("editToggle");
+    tg.hidden = locked;
+    tg.textContent = min ? "□" : "–";
+    tg.setAttribute("aria-label", min ? "편집 창 펼치기" : "편집 창 최소화");
+    tg.setAttribute("aria-expanded", String(!min));
+    tg.title = min ? "펼치기" : "최소화";
     var dirty = isDirty(), connected = !!gh.cfg;
     var st = $("editState"), help = $("editHelp"), act = $("editActions");
     var text, tone = "";
