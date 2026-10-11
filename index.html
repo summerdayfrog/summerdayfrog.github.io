@@ -75,11 +75,14 @@ h1 { font-family: var(--f-display); font-weight: 800; font-size: clamp(36px, 6.5
 .editbar { background: var(--edit); border: 1px solid var(--edit-line); border-radius: 10px; padding: 12px 14px; display: grid; gap: 10px; }
 .editbar p { margin: 0; font-size: 14px; }
 /* 편집 창 최소화(–) / 펼치기(□) */
-.winbtn { width: 28px; height: 28px; flex: none; display: grid; place-items: center; padding: 0; border: 1px solid var(--edit-line);
-  border-radius: 6px; background: transparent; color: var(--ink); font-size: 15px; line-height: 1; }
-.winbtn:hover { background: rgba(255, 255, 255, .55); }
-.editbar.min { padding-block: 8px; }
-.editbar.min #editHelp, .editbar.min #editActions, .editbar.min #ghForm, .editbar.min #resetSlot { display: none; }
+.winbtn { width: 28px; height: 28px; flex: none; display: grid; place-items: center; padding: 0; border: 0;
+  background: none; color: var(--muted); font-size: 17px; line-height: 1; }
+.winbtn:hover { color: var(--ink); }
+/* 최소화하면 노란 상자 없이 상태 글만 파스텔 파랑 굵은 글씨로 */
+.editbar.min { background: none; border-color: transparent; padding: 0 2px; }
+.editbar.min #editTitle, .editbar.min #editHelp, .editbar.min #editActions, .editbar.min #ghForm, .editbar.min #resetSlot { display: none; }
+.editbar.min .state { color: #5E95D4; font-weight: 700; font-size: 13px; }
+.editbar.min .state.dirty { color: var(--danger); }
 .editbar .row { display: flex; flex-wrap: wrap; gap: 8px; align-items: center; }
 .editbar .state { font-family: var(--f-mono); font-size: 12px; color: var(--muted); }
 .editbar .state.dirty { color: var(--danger); }
@@ -237,7 +240,7 @@ footer a { color: inherit; }
   .overlay { justify-content: center; align-items: center; padding: 32px;
     background: rgba(27, 42, 58, .28); -webkit-backdrop-filter: blur(8px); backdrop-filter: blur(8px); }
   .sheet { width: min(640px, 100%); height: auto; max-height: calc(100vh - 64px); max-height: calc(100dvh - 64px);
-    border-radius: 18px; padding: 28px 30px 0; box-shadow: 0 30px 70px -20px rgba(27, 42, 58, .45); }
+    border-radius: 0; padding: 28px 30px 0; box-shadow: 0 30px 70px -20px rgba(27, 42, 58, .45); }
   /* 길게 써도 저장 버튼이 항상 창 아래에 보이게 */
   .sheet-actions { position: sticky; bottom: 0; z-index: 1; background: var(--paper);
     margin: 0 -30px; padding: 14px 30px 18px; border-top: 1px solid var(--line); }
