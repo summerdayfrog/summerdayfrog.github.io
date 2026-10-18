@@ -64,6 +64,7 @@ img { max-width: 100%; display: block; }
 button, input, select, textarea { font: inherit; color: inherit; }
 button { cursor: pointer; }
 :focus-visible { outline: 2px solid var(--accent-strong); outline-offset: 2px; }
+#readerPanel:focus, #form:focus, .quiet:focus-visible { outline: none !important; }
 
 /* Masthead */
 .mast { display: grid; gap: 18px; }
@@ -139,7 +140,9 @@ h1 { font-family: var(--f-display); font-weight: 800; font-size: clamp(36px, 6.5
 .tools input { flex: 1 1 160px; max-width: 260px; }
 
 /* Grid of cards */
-.grid { display: grid; grid-template-columns: repeat(auto-fill, minmax(min(100%, 300px), 1fr)); gap: 18px; align-items: start; }
+/* 카드는 높이가 제각각이라, 위에서부터 가장 짧은 줄에 차곡차곡 쌓는다 (벽돌 배치) */
+.grid { display: flex; gap: 18px; align-items: flex-start; }
+.gcol { flex: 1 1 0; min-width: 0; display: flex; flex-direction: column; gap: 18px; }
 .card { background: var(--paper); border-radius: 6px; box-shadow: var(--shadow); overflow: hidden; display: grid; min-width: 0; }
 .cover { position: relative; aspect-ratio: 16 / 9; max-width: 100%; color: var(--cover-ink); overflow: hidden; display: block; text-decoration: none; }
 .cover .gen { position: absolute; inset: 0; padding: 12px 14px; display: flex; flex-direction: column; justify-content: space-between;
@@ -373,7 +376,7 @@ body.locked .tally, body.locked .bar, body.locked #grid, body.locked #emptySlot,
   <div class="bar">
     <div class="chips" id="chips" role="group" aria-label="분류 필터"></div>
     <div class="tools">
-      <input id="q" type="search" placeholder="제목, 후기, 태그 검색" aria-label="검색">
+      <input id="q" spellcheck="false" type="search" placeholder="제목, 후기, 태그 검색" aria-label="검색">
       <select id="sort" aria-label="정렬">
         <option value="new">최근 기록순</option>
         <option value="watched">날짜순</option>
@@ -393,11 +396,11 @@ body.locked .tally, body.locked .bar, body.locked #grid, body.locked #emptySlot,
 </div>
 
 <div class="reader-overlay" id="reader" hidden>
-  <article class="reader" id="readerPanel" role="dialog" aria-modal="true" aria-labelledby="readerTitle"></article>
+  <article class="reader" id="readerPanel" tabindex="-1" role="dialog" aria-modal="true" aria-labelledby="readerTitle"></article>
 </div>
 
 <div class="overlay" id="overlay" hidden>
-  <form class="sheet" id="form" novalidate aria-labelledby="formTitle">
+  <form class="sheet" id="form" tabindex="-1" novalidate aria-labelledby="formTitle">
     <h2 id="formTitle">새 기록</h2>
     <p class="restore" id="fRestore" hidden>
       <span id="fRestoreText">임시 저장된 내용을 불러왔어요.</span>
@@ -405,7 +408,7 @@ body.locked .tally, body.locked .bar, body.locked #grid, body.locked #emptySlot,
     </p>
     <div class="field">
       <label for="fUrl">링크</label>
-      <input id="fUrl" type="url" inputmode="url" placeholder="https://youtu.be/…">
+      <input id="fUrl" spellcheck="false" type="url" inputmode="url" placeholder="https://youtu.be/…">
     </div>
     <div class="preview" id="fPreview" hidden><img id="fPreviewImg" alt=""></div>
     <div class="field" id="fPhotoWrap" hidden>
@@ -420,7 +423,7 @@ body.locked .tally, body.locked .bar, body.locked #grid, body.locked #emptySlot,
     </div>
     <div class="field">
       <label for="fTitle">제목</label>
-      <input id="fTitle" required maxlength="140" placeholder="영상 제목, 노래 제목, 책 제목">
+      <input id="fTitle" spellcheck="false" required maxlength="140" placeholder="영상 제목, 노래 제목, 책 제목">
     </div>
     <div class="row2">
       <div class="field">
@@ -440,22 +443,22 @@ body.locked .tally, body.locked .bar, body.locked #grid, body.locked #emptySlot,
     <label class="check" for="fFav"><input type="checkbox" id="fFav"> ★ 즐겨찾기에 넣기</label>
     <div class="field">
       <label for="fOne">한줄평</label>
-      <input id="fOne" maxlength="80" placeholder="한 문장으로 남기는 감상">
+      <input id="fOne" spellcheck="false" maxlength="80" placeholder="한 문장으로 남기는 감상">
     </div>
     <div class="field">
       <div class="lblrow">
         <label for="fBody" id="fBodyLabel">후기</label>
         <button type="button" class="textbtn" id="tplBtn" hidden>양식 넣기</button>
       </div>
-      <textarea id="fBody" placeholder="기억에 남는 장면, 배운 것, 떠오른 생각…"></textarea>
+      <textarea id="fBody" spellcheck="false" placeholder="기억에 남는 장면, 배운 것, 떠오른 생각…"></textarea>
     </div>
     <div class="field">
       <label for="fTags">태그</label>
-      <input id="fTags" placeholder="쉼표로 구분: 미스터리 수사반, 8월, 다시볼것">
+      <input id="fTags" spellcheck="false" placeholder="쉼표로 구분: 미스터리 수사반, 8월, 다시볼것">
     </div>
     <div class="field">
       <label for="fImage">커버 이미지 주소 <span class="hint">(선택) 책 표지 등. 비우면 썸네일이나 색 커버</span></label>
-      <input id="fImage" type="url" inputmode="url" placeholder="https://…/cover.jpg">
+      <input id="fImage" spellcheck="false" type="url" inputmode="url" placeholder="https://…/cover.jpg">
     </div>
     <p class="err" id="fErr" hidden></p>
     <div class="sheet-actions">
@@ -1258,11 +1261,19 @@ body.locked .tally, body.locked .bar, body.locked #grid, body.locked #emptySlot,
 
   /* ---------- 크게 보기 ---------- */
   var readerReturnFocus = null;
+  /* 창이 열릴 때 자동으로 선택되는 칸·버튼은 파란 테두리 없이 선택한다. 직접 누르면 테두리가 다시 보인다 */
+  function quietFocus(node) {
+    if (!node || !node.focus) return;
+    node.classList.add("quiet");
+    var off = function () { node.classList.remove("quiet"); node.removeEventListener("blur", off); node.removeEventListener("pointerdown", off); };
+    node.addEventListener("blur", off); node.addEventListener("pointerdown", off);
+    node.focus({ preventScroll: true });
+  }
   function openReader(id) {
     readerReturnFocus = document.activeElement;
     state.readerId = id; state.confirmId = null;
     renderReader();
-    setTimeout(function () { var c = $("readerClose"); if (c) c.focus(); }, 0);
+    setTimeout(function () { quietFocus($("readerClose")); }, 0);
   }
   function closeReader() {
     var id = state.readerId;
@@ -1270,7 +1281,7 @@ body.locked .tally, body.locked .bar, body.locked #grid, body.locked #emptySlot,
     var back = null;
     try { back = id && document.querySelector('.card[data-id="' + CSS.escape(id) + '"] .titlebtn'); } catch (e) {}
     var target = back || readerReturnFocus;
-    if (target && target.focus) target.focus();
+    quietFocus(target);
   }
   function stepReader(dir) {
     var list = visible(), i = list.findIndex(function (x) { return x.id === state.readerId; });
@@ -1328,6 +1339,33 @@ body.locked .tally, body.locked .bar, body.locked #grid, body.locked #emptySlot,
     else if (e.key === "ArrowRight") stepReader(1);
   });
 
+  /* 카드를 순서대로, 지금 가장 짧은 줄에 하나씩 놓는다. 줄 수는 화면 너비로 정한다 (카드 한 장은 최소 300px) */
+  var gridCards = [], gridCols = 0;
+  function layoutGrid(cards) {
+    var grid = $("grid");
+    if (cards) gridCards = cards;
+    var w = grid.clientWidth || grid.parentElement.clientWidth || 300;
+    var n = Math.max(1, Math.floor((w + 18) / (300 + 18)));
+    gridCols = n;
+    grid.textContent = "";
+    var cols = [];
+    for (var i = 0; i < n; i++) { var c = el("div", { class: "gcol" }); grid.appendChild(c); cols.push(c); }
+    gridCards.forEach(function (node) {
+      var best = cols[0];
+      cols.forEach(function (c) { if (c.offsetHeight < best.offsetHeight) best = c; });
+      best.appendChild(node);
+    });
+  }
+  var gridResizeTimer;
+  window.addEventListener("resize", function () {
+    clearTimeout(gridResizeTimer);
+    gridResizeTimer = setTimeout(function () {
+      var grid = $("grid"), w = grid.clientWidth || 300;
+      if (Math.max(1, Math.floor((w + 18) / 318)) !== gridCols) layoutGrid();
+    }, 120);
+  });
+  if (document.fonts && document.fonts.ready) document.fonts.ready.then(function () { if (gridCards.length) layoutGrid(); });
+
   function render() {
     var locked = isLocked();
     document.body.classList.toggle("locked", locked);
@@ -1342,8 +1380,7 @@ body.locked .tally, body.locked .bar, body.locked #grid, body.locked #emptySlot,
       status.appendChild(el("div", { class: "notice" }, [el("p", {}, [gh.message + " ", el("a", { href: "#edit", text: "편집 모드에서 확인하기" })])]));
     }
     var list = visible();
-    var grid = $("grid"); grid.textContent = "";
-    list.forEach(function (it) { grid.appendChild(card(it)); });
+    layoutGrid(list.map(card));
     var slot = $("emptySlot"); slot.textContent = "";
     if (gh.cfg && !gh.remote && !state.items.length) {
       if (gh.status === "loading") slot.appendChild(el("section", { class: "empty" }, [el("p", { text: "기록을 불러오는 중…" })]));
@@ -1474,8 +1511,8 @@ body.locked .tally, body.locked .bar, body.locked #grid, body.locked #emptySlot,
     box.textContent = "";
     fieldsFor(cat, path).forEach(function (d) {
       var id = "fx-" + d.id, input;
-      if (d.type === "long") input = el("textarea", { id: id });
-      else input = el("input", { id: id, type: d.type === "date" ? "date" : "text", inputmode: d.type === "number" ? "numeric" : null, autocomplete: "off" });
+      if (d.type === "long") input = el("textarea", { id: id, spellcheck: "false" });
+      else input = el("input", { id: id, type: d.type === "date" ? "date" : "text", inputmode: d.type === "number" ? "numeric" : null, autocomplete: "off", spellcheck: "false" });
       input.setAttribute("data-fid", d.id);
       if (d.placeholder) input.placeholder = d.placeholder;
       input.value = extraCache[d.id] || "";
@@ -1604,7 +1641,7 @@ body.locked .tally, body.locked .bar, body.locked #grid, body.locked #emptySlot,
     }
     $("overlay").hidden = false;
     var all = readSheets(); all.open = sheetTarget(); writeSheets(all);
-    setTimeout(function () { (it || draft || isMemo($("fCat").value) ? $("fTitle") : $("fUrl")).focus(); }, 0);
+    setTimeout(function () { quietFocus(it || draft || isMemo($("fCat").value) ? $("fTitle") : $("fUrl")); }, 0);
   }
   function closeSheet(saved) {
     if (uploading) return;   /* 사진을 올리는 동안은 닫지 않는다 */
