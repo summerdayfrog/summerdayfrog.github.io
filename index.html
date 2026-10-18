@@ -13,7 +13,7 @@
 <link rel="icon" type="image/png" sizes="16x16" href="icon-16.png">
 <link rel="icon" type="image/png" sizes="32x32" href="icon-32.png">
 <link rel="icon" type="image/png" sizes="48x48" href="icon-48.png">
-<link rel="icon" type="image/svg+xml" sizes="any" href="data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 64 64'%3E%3Cstyle%3Epath%7Bfill:%235E95D4%7D%40media (prefers-color-scheme:dark)%7Bpath%7Bfill:%239CC3EE%7D%7D%3C/style%3E%3Cpath fill-rule='evenodd' d='M32.0 2.0C35.2 20.0 40.6 27.5 53.5 32.0C40.6 36.5 35.2 44.0 32.0 62.0C28.8 44.0 23.4 36.5 10.5 32.0C23.4 27.5 28.8 20.0 32.0 2.0ZM32.0 10.5C32.6 26.4 35.8 31.1 46.5 32.0C35.8 32.9 32.6 37.6 32.0 53.5C31.4 37.6 28.2 32.9 17.5 32.0C28.2 31.1 31.4 26.4 32.0 10.5Z'/%3E%3C/svg%3E">
+<link rel="icon" type="image/svg+xml" sizes="any" href="data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 64 64'%3E%3Cstyle%3Epath%7Bfill:%235E95D4;stroke:%235E95D4;stroke-width:1.2;stroke-linejoin:round%7D%40media (prefers-color-scheme:dark)%7Bpath%7Bfill:%239CC3EE;stroke:%239CC3EE%7D%7D%3C/style%3E%3Cpath fill-rule='evenodd' d='M32.0 2.0C35.2 20.0 40.6 27.5 53.5 32.0C40.6 36.5 35.2 44.0 32.0 62.0C28.8 44.0 23.4 36.5 10.5 32.0C23.4 27.5 28.8 20.0 32.0 2.0ZM32.0 10.5C32.6 26.4 35.8 31.1 46.5 32.0C35.8 32.9 32.6 37.6 32.0 53.5C31.4 37.6 28.2 32.9 17.5 32.0C28.2 31.1 31.4 26.4 32.0 10.5Z'/%3E%3C/svg%3E">
 <link rel="apple-touch-icon" sizes="180x180" href="apple-touch-icon.png">
 <!-- 휴대폰에 앱으로 설치했을 때의 이름·색·아이콘 (manifest.webmanifest 와 app-icon 그림들을 같이 올려 두세요) -->
 <link rel="manifest" href="manifest.webmanifest">
@@ -254,6 +254,18 @@ a.cover:hover .play, a.cover:focus-visible .play { background: var(--accent-stro
 .btn.save:hover { background: var(--save-hover); filter: none; }
 .preview { aspect-ratio: 16 / 9; border-radius: 6px; overflow: hidden; background: var(--chip); min-height: 0; flex-shrink: 0; }
 .preview img { width: 100%; height: 100%; object-fit: cover; }
+/* 끄적임(메모) 카드: 사진이 있으면 사진, 없으면 글만 */
+.card.memo .body { align-content: start; }
+.memo-cat { margin: 0; font-size: 12px; color: var(--accent-strong); font-weight: 600; letter-spacing: .02em; }
+.memo-text { margin: 0; font-size: 14px; line-height: 1.65; color: var(--ink); white-space: pre-line; display: -webkit-box; -webkit-line-clamp: 6; -webkit-box-orient: vertical; overflow: hidden; overflow-wrap: anywhere; word-break: keep-all; }
+.card.memo .cover + .body .memo-text { -webkit-line-clamp: 3; }
+.cover.photo { background: var(--chip); }
+.reader-photo { background: var(--chip); display: flex; justify-content: center; }
+.reader-photo:not(.ok) { aspect-ratio: 4 / 3; }
+.reader-photo img { width: 100%; height: auto; max-height: 80vh; object-fit: contain; }
+.photo-pick { border-radius: 6px; overflow: hidden; background: var(--chip); display: flex; justify-content: center; }
+.photo-pick img { width: 100%; max-height: 320px; object-fit: contain; }
+.photo-btns { display: flex; align-items: center; gap: 8px; flex-wrap: wrap; }
 .row2 { display: grid; grid-template-columns: 1fr 1fr; gap: 12px; }
 @media (max-width: 420px) { .row2 { grid-template-columns: 1fr; } }
 .sheet-actions { display: flex; gap: 8px; justify-content: flex-end; align-items: center; flex-wrap: wrap; padding-top: 4px; }
@@ -396,6 +408,16 @@ body.locked .tally, body.locked .bar, body.locked #grid, body.locked #emptySlot,
       <input id="fUrl" type="url" inputmode="url" placeholder="https://youtu.be/…">
     </div>
     <div class="preview" id="fPreview" hidden><img id="fPreviewImg" alt=""></div>
+    <div class="field" id="fPhotoWrap" hidden>
+      <span class="lbl">사진 <span class="hint">(선택) 넣으면 카드에 사진이 뜨고, 비우면 글만 보여요</span></span>
+      <div class="photo-pick" id="fPhotoBox" hidden><img id="fPhotoImg" alt="고른 사진 미리보기"></div>
+      <div class="photo-btns">
+        <button type="button" class="btn small ghost" id="fPhotoPick">사진 고르기</button>
+        <button type="button" class="textbtn" id="fPhotoRemove" hidden>사진 빼기</button>
+        <span class="hint" id="fPhotoNote"></span>
+      </div>
+      <input type="file" id="fPhotoFile" accept="image/*" hidden>
+    </div>
     <div class="field">
       <label for="fTitle">제목</label>
       <input id="fTitle" required maxlength="140" placeholder="영상 제목, 노래 제목, 책 제목">
@@ -475,6 +497,8 @@ body.locked .tally, body.locked .bar, body.locked #grid, body.locked #emptySlot,
   /* 카테고리별 후기 양식: reviews.js 에서 "template": ["■ 제목", "", ...] 처럼 줄 목록으로 적는다 */
   /* 하위 카테고리: reviews.js 에서 카테고리 안에 "sub": [{ "id": "...", "label": "..." }] 로 적는다 */
   function catOf(id) { for (var i = 0; i < CATS.length; i++) if (CATS[i].id === id) return CATS[i]; return null; }
+  /* "kind": "memo" 인 카테고리는 끄적임용: 링크·한줄평·즐겨찾기 없이 제목·날짜·내용·태그 + 사진(선택) */
+  function isMemo(id) { var c = catOf(id); return !!(c && c.kind === "memo"); }
   /* 하위 카테고리는 몇 단계든 "sub" 안에 "sub" 를 넣어 만든다.
      기록에는 경로를 "lecture/math" 처럼 / 로 이어서 저장한다. */
   function childrenOf(node) { return node && Array.isArray(node.sub) ? node.sub.filter(function (s) { return s && s.id && s.label; }) : []; }
@@ -730,8 +754,11 @@ body.locked .tally, body.locked .bar, body.locked #grid, body.locked #emptySlot,
     return { items: w.REVIEWS, site: (w.SITE && typeof w.SITE === "object") ? w.SITE : {}, cats: Array.isArray(w.CATEGORIES) ? w.CATEGORIES : null };
   }
 
-  function ghRequest(cfg, method, body) {
-    var url = "https://api.github.com/repos/" + encodeURIComponent(cfg.owner) + "/" + encodeURIComponent(cfg.repo) + "/contents/reviews.js";
+  function ghRequest(cfg, method, body) { return ghFile(cfg, method, "reviews.js", body); }
+  /* 저장소 안의 아무 파일 (reviews.js, photos/사진.jpg …) 을 읽고 쓰고 지운다 */
+  function ghFile(cfg, method, path, body) {
+    var url = "https://api.github.com/repos/" + encodeURIComponent(cfg.owner) + "/" + encodeURIComponent(cfg.repo) + "/contents/" +
+              String(path).split("/").map(encodeURIComponent).join("/");
     if (method === "GET") url += "?ref=" + encodeURIComponent(cfg.branch || "main");
     var headers = { "Authorization": "Bearer " + cfg.token, "Accept": "application/vnd.github+json", "X-GitHub-Api-Version": "2022-11-28" };
     if (body) headers["Content-Type"] = "application/json";
@@ -751,6 +778,56 @@ body.locked .tally, body.locked .bar, body.locked #grid, body.locked #emptySlot,
       return { sha: j.sha, items: parsed.items, site: parsed.site, cats: parsed.cats };
     });
   }
+  /* ---------- 끄적임 사진 ----------
+     사진은 저장소의 photos/ 폴더에 따로 올리고, 기록에는 "photo": "photos/….jpg" 경로만 적는다.
+     비공개 저장소라 그냥 주소로는 안 보이니, 연결된 토큰으로 읽어서 보여준다. */
+  var photoCache = {};
+  function photoSrc(path) {
+    if (photoCache[path]) return photoCache[path];
+    var p = !gh.cfg ? Promise.resolve(path)
+      : ghFile(gh.cfg, "GET", path).then(function (j) {
+          if (j.encoding !== "base64" || !j.content) throw new Error("unreadable");
+          var type = /\.png$/i.test(path) ? "image/png" : /\.webp$/i.test(path) ? "image/webp" : "image/jpeg";
+          return "data:" + type + ";base64," + j.content.replace(/\s/g, "");
+        });
+    p = p.catch(function (e) { delete photoCache[path]; throw e; });
+    photoCache[path] = p;
+    return p;
+  }
+  /* 고른 사진을 긴 변 1600px 의 JPG 로 줄인다 (GitHub 에서 읽기 쉬운 1MB 아래로) */
+  function shrinkPhoto(file) {
+    return new Promise(function (ok, no) {
+      var url = URL.createObjectURL(file), img = new Image();
+      img.onload = function () {
+        URL.revokeObjectURL(url);
+        var w = img.naturalWidth, h = img.naturalHeight, s = Math.min(1, 1600 / Math.max(w, h));
+        if (!w || !h) return no(new Error("empty"));
+        var c = document.createElement("canvas"); c.width = Math.round(w * s); c.height = Math.round(h * s);
+        var ctx = c.getContext("2d"); ctx.fillStyle = "#fff"; ctx.fillRect(0, 0, c.width, c.height);
+        ctx.drawImage(img, 0, 0, c.width, c.height);
+        var q = 0.85, d = c.toDataURL("image/jpeg", q);
+        while (d.length > 1200000 && q > 0.45) { q -= 0.1; d = c.toDataURL("image/jpeg", q); }
+        ok(d);
+      };
+      img.onerror = function () { URL.revokeObjectURL(url); no(new Error("decode")); };
+      img.src = url;
+    });
+  }
+  /* 바꾸거나 지운 사진 파일은 reviews.js 저장이 끝난 뒤에 지운다 (그 전에 지우면 사진이 깨질 수 있어서) */
+  var dropQueue = [];
+  function queueDrop(path) { if (path && /^photos\//.test(path) && dropQueue.indexOf(path) < 0) dropQueue.push(path); }
+  function flushDrops() {
+    if (!gh.cfg || !dropQueue.length) return;
+    var cfg = gh.cfg;
+    dropQueue.splice(0).forEach(function (path) {
+      if (state.items.some(function (x) { return x.photo === path; })) return;
+      ghFile(cfg, "GET", path).then(function (j) {
+        return ghFile(cfg, "DELETE", path, { message: "사진 삭제: " + path, sha: j.sha, branch: cfg.branch || "main" });
+      }).catch(function () {});
+      delete photoCache[path];
+    });
+  }
+
   function ghMessage(e, connecting) {
     var s = e && e.status;
     if (connecting && s === 401) return "토큰이 맞지 않아요. 토큰을 처음부터 끝까지 다시 복사해서 붙여 넣어 주세요.";
@@ -833,6 +910,7 @@ body.locked .tally, body.locked .bar, body.locked #grid, body.locked #emptySlot,
       gh.pushing = false; gh.conflicts = 0;
       if (gh.again || !same(state.items, snapshot)) { gh.again = false; writeDraft(); ghPush(); return; }
       clearDraft(); gh.status = "saved"; renderEditbar();
+      flushDrops();
     }, function (e) {
       /* 다른 기기나 GitHub 화면에서 파일이 바뀐 경우: 최신본을 받아 내 변경만 다시 얹고 저장 */
       if ((e.status === 409 || e.status === 422) && gh.conflicts < 3) {
@@ -915,7 +993,8 @@ body.locked .tally, body.locked .bar, body.locked #grid, body.locked #emptySlot,
     $("tTotal").textContent = src.length;
     $("tMonth").textContent = src.filter(function (i) { return (i.watchedAt || i.createdAt || "").slice(0, 7) === ym; }).length;
     $("tFav").textContent = src.filter(function (i) { return i.fav; }).length;
-    var counts = {}; src.forEach(function (i) { counts[i.category] = (counts[i.category] || 0) + 1; });
+    /* ‘가장 많이 본’에는 끄적임(메모)은 세지 않는다 */
+    var counts = {}; src.forEach(function (i) { if (!isMemo(i.category)) counts[i.category] = (counts[i.category] || 0) + 1; });
     var top = Object.keys(counts).sort(function (a, b) { return counts[b] - counts[a]; })[0];
     $("tTop").textContent = top ? catLabel(top) : "–";
   }
@@ -1053,6 +1132,7 @@ body.locked .tally, body.locked .bar, body.locked #grid, body.locked #emptySlot,
   }
 
   function cover(it, big) {
+    if (isMemo(it.category)) return memoCover(it, big);
     var url = safeUrl(it.url || "");
     var thumb = thumbFor(it);
     var yt = !!youtubeId(it.url);
@@ -1081,6 +1161,52 @@ body.locked .tally, body.locked .bar, body.locked #grid, body.locked #emptySlot,
     return el("div", { class: "cover" + (big ? " big" : "") }, kids);
   }
 
+  /* 끄적임: 사진이 있을 때만 사진을 보여주고, 없으면 아무것도 안 그린다 */
+  function memoCover(it, big) {
+    if (!it.photo) return null;
+    var img = el("img", { alt: "", loading: big ? "eager" : "lazy" });
+    var box;
+    if (big) box = el("div", { class: "reader-photo" }, [img]);
+    else box = el("div", { class: "cover photo" }, [img,
+      el("div", { class: "label" }, [el("span", { text: fullCatLabel(it) })]),
+      it.example ? el("span", { class: "ex", text: "예시" }) : null]);
+    img.addEventListener("load", function () { box.classList.add("ok"); });
+    photoSrc(it.photo).then(function (s) { img.src = s; }, function () { img.remove(); });
+    return box;
+  }
+
+  function memoCard(it) {
+    var hasPhoto = !!it.photo, text = (it.body || "").trim();
+    var kids = [
+      hasPhoto ? null : el("p", { class: "memo-cat", text: fullCatLabel(it) }),
+      el("h3", { class: "title" }, [el("button", { type: "button", class: "titlebtn", text: it.title || "(제목 없음)", onclick: function () { openReader(it.id); } })]),
+      el("div", { class: "meta" }, [el("span"), el("span", { class: "date", text: fmtDate(it.watchedAt) })]),
+      text ? el("p", { class: "memo-text", text: text }) : null
+    ];
+    if ((it.tags || []).length) kids.push(el("div", { class: "tags" }, it.tags.map(function (t) {
+      return el("button", { type: "button", class: "tag", text: "#" + t, onclick: function () { state.tag = t; render(); } });
+    })));
+    kids.push(el("div", { class: "actions" }, [
+      el("span", { class: "spacer" }),
+      el("button", { type: "button", class: "textbtn", text: "크게 보기", onclick: function () { openReader(it.id); } }),
+      state.edit ? el("button", { type: "button", class: "textbtn", text: "수정", onclick: function () { openSheet(it); } }) : null,
+      state.edit ? el("button", { type: "button", class: "textbtn", text: "삭제", onclick: function () { state.confirmId = it.id; render(); } }) : null
+    ]));
+    if (state.confirmId === it.id) kids.push(el("div", { class: "confirm" }, [
+      "이 기록을 지울까요?", el("span", { class: "spacer" }),
+      el("button", { type: "button", class: "btn small danger", text: "지우기", onclick: function () {
+        queueDrop(it.photo);
+        state.items = state.items.filter(function (i) { return i.id !== it.id; }); dropSheetDraft(it.id); commit(); } }),
+      el("button", { type: "button", class: "btn small ghost", text: "취소", onclick: function () { state.confirmId = null; render(); } })
+    ]));
+    var art = el("article", { class: "card memo", "data-id": it.id }, [memoCover(it, false), el("div", { class: "body" }, kids)]);
+    art.addEventListener("click", function (e) {
+      if (e.target.closest("a, button, .confirm")) return;
+      openReader(it.id);
+    });
+    return art;
+  }
+
   /* 카드 미리보기용: ■ 소제목을 빼고 본문만 이어 붙인다 */
   function plainBody(text) {
     var isHead = headingTest();
@@ -1088,6 +1214,7 @@ body.locked .tally, body.locked .bar, body.locked #grid, body.locked #emptySlot,
   }
 
   function card(it) {
+    if (isMemo(it.category)) return memoCard(it);
     var url = safeUrl(it.url || "");
     var preview = plainBody(it.body);
     var kids = [
@@ -1116,6 +1243,7 @@ body.locked .tally, body.locked .bar, body.locked #grid, body.locked #emptySlot,
     if (state.confirmId === it.id) kids.push(el("div", { class: "confirm" }, [
       "이 기록을 지울까요?", el("span", { class: "spacer" }),
       el("button", { type: "button", class: "btn small danger", text: "지우기", onclick: function () {
+        queueDrop(it.photo);
         state.items = state.items.filter(function (i) { return i.id !== it.id; }); dropSheetDraft(it.id); commit(); } }),
       el("button", { type: "button", class: "btn small ghost", text: "취소", onclick: function () { state.confirmId = null; render(); } })
     ]));
@@ -1164,9 +1292,10 @@ body.locked .tally, body.locked .bar, body.locked #grid, body.locked #emptySlot,
       el("span", { class: "spacer" }),
       el("button", { type: "button", class: "navbtn close", id: "readerClose", "aria-label": "닫기", text: "✕", onclick: closeReader })
     ]));
-    panel.appendChild(cover(it, true));
+    var memo = isMemo(it.category);
+    var cv = cover(it, true); if (cv) panel.appendChild(cv);
     var inner = el("div", { class: "reader-body" }, [
-      el("p", { class: "reader-meta" }, [fullCatLabel(it), it.watchedAt ? " · " + fmtDate(it.watchedAt) : "", it.fav ? " · ★ 즐겨찾기" : ""]),
+      el("p", { class: "reader-meta" }, [fullCatLabel(it), it.watchedAt ? " · " + fmtDate(it.watchedAt) : "", it.fav && !memo ? " · ★ 즐겨찾기" : ""]),
       el("h2", { class: "reader-title", id: "readerTitle", text: it.title || "(제목 없음)" }),
       it.oneLine ? el("p", { class: "reader-one", text: "“" + it.oneLine + "”" }) : null,
       (function () {
@@ -1176,15 +1305,15 @@ body.locked .tally, body.locked .bar, body.locked #grid, body.locked #emptySlot,
         rows.forEach(function (r) { dl.appendChild(el("dt", { text: r[0] })); dl.appendChild(el("dd", { text: r[1] })); });
         return dl;
       })(),
-      it.body ? bodyNode(it.body) : el("p", { class: "reader-empty", text: "아직 적은 후기가 없어요." })
+      it.body ? bodyNode(it.body) : el("p", { class: "reader-empty", text: memo ? "아직 적은 내용이 없어요." : "아직 적은 후기가 없어요." })
     ]);
     if ((it.tags || []).length) inner.appendChild(el("div", { class: "tags" }, it.tags.map(function (t) {
       return el("button", { type: "button", class: "tag", text: "#" + t, onclick: function () { state.tag = t; closeReader(); render(); } });
     })));
-    inner.appendChild(el("div", { class: "actions" }, [
+    if (url || state.edit) inner.appendChild(el("div", { class: "actions" }, [
       url ? el("a", { class: "btn small", href: url, target: "_blank", rel: "noopener noreferrer", text: youtubeId(url) ? "▶ 유튜브에서 보기" : "보러 가기 ↗" }) : null,
       el("span", { class: "spacer" }),
-      state.edit ? favControl(it) : null,
+      state.edit && !memo ? favControl(it) : null,
       state.edit ? el("button", { type: "button", class: "btn small ghost", text: "수정", onclick: function () { openSheet(it); } }) : null
     ]));
     panel.appendChild(inner);
@@ -1233,7 +1362,48 @@ body.locked .tally, body.locked .bar, body.locked #grid, body.locked #emptySlot,
 
   /* ---------- 작성 / 수정 시트 ---------- */
   setCats(CATS);
+  /* 끄적임 분류를 고르면 링크·한줄평·즐겨찾기·커버 주소 칸을 숨기고 사진 칸을 보여준다 */
+  function applyKind() {
+    var memo = isMemo($("fCat").value);
+    $("fUrl").closest(".field").hidden = memo;
+    $("fOne").closest(".field").hidden = memo;
+    $("fImage").closest(".field").hidden = memo;
+    $("fFav").closest("label").hidden = memo;
+    $("fPhotoWrap").hidden = !memo;
+    $("fTitle").placeholder = memo ? "메모 제목" : "영상 제목, 노래 제목, 책 제목";
+    $("fBody").placeholder = memo ? "떠오른 생각, 오늘 있었던 일…" : "기억에 남는 장면, 배운 것, 떠오른 생각…";
+    updatePreview(); showPhoto();
+  }
+  /* 작성 화면의 사진: kept = 이미 올라가 있는 사진 경로, data = 새로 고른 사진 (저장할 때 올린다) */
+  var photo = { kept: "", data: "" }, uploading = false;
+  function setPhoto(p) { photo = { kept: (p && p.kept) || "", data: (p && p.data) || "" }; showPhoto(); }
+  function showPhoto() {
+    if (!photo) return;
+    var has = !!(photo.data || photo.kept), img = $("fPhotoImg");
+    $("fPhotoBox").hidden = !has; $("fPhotoRemove").hidden = !has;
+    $("fPhotoPick").textContent = has ? "다른 사진으로 바꾸기" : "사진 고르기";
+    $("fPhotoNote").textContent = photo.data && !gh.cfg ? "사진은 GitHub에 연결돼 있어야 올라가요." : "";
+    if (photo.data) img.src = photo.data;
+    else if (photo.kept) {
+      img.removeAttribute("src");
+      var want = photo.kept;
+      photoSrc(want).then(function (s) { if (photo.kept === want && !photo.data) img.src = s; }, function () {});
+    } else img.removeAttribute("src");
+  }
+  $("fPhotoPick").addEventListener("click", function () { $("fPhotoFile").click(); });
+  $("fPhotoRemove").addEventListener("click", function () { setPhoto({}); scheduleSheetSave(); });
+  $("fPhotoFile").addEventListener("change", function () {
+    var file = this.files && this.files[0]; this.value = "";
+    if (!file) return;
+    $("fPhotoNote").textContent = "사진을 준비하는 중…";
+    shrinkPhoto(file).then(function (d) {
+      setPhoto({ kept: photo.kept, data: d }); scheduleSheetSave();
+    }, function () {
+      $("fPhotoNote").textContent = "이 사진은 읽을 수 없어요. JPG나 PNG 사진으로 다시 골라 주세요.";
+    });
+  });
   function updatePreview() {
+    if (isMemo($("fCat").value)) { $("fPreview").hidden = true; return; }
     var t = thumbFor({ url: $("fUrl").value.trim(), image: $("fImage").value.trim() });
     $("fPreview").hidden = !t;
     if (t) $("fPreviewImg").src = t;
@@ -1312,6 +1482,7 @@ body.locked .tally, body.locked .bar, body.locked #grid, body.locked #emptySlot,
       box.appendChild(el("div", { class: "field" }, [el("label", { for: id, text: d.label }), input]));
     });
     $("fBodyLabel").textContent = bodyLabelFor(cat, path);
+    applyKind();
   }
   function applyTemplate() {
     var t = curTemplate(), body = $("fBody");
@@ -1334,13 +1505,19 @@ body.locked .tally, body.locked .bar, body.locked #grid, body.locked #emptySlot,
     try {
       if (Object.keys(all.drafts || {}).length || all.open) localStorage.setItem(SHEET_KEY, JSON.stringify(all));
       else localStorage.removeItem(SHEET_KEY);
-    } catch (e) {}
+    } catch (e) {
+      /* 브라우저 저장 공간이 모자라면 새로 고른 사진만 빼고 글은 꼭 남긴다 */
+      try {
+        Object.keys(all.drafts || {}).forEach(function (k) { var f = all.drafts[k].form; if (f && f.photo) f.photo.data = ""; });
+        localStorage.setItem(SHEET_KEY, JSON.stringify(all));
+      } catch (e2) {}
+    }
   }
   function sheetTarget() { return state.editing || "new"; }
   function readForm() {
     return { url: $("fUrl").value, title: $("fTitle").value, cat: $("fCat").value, sub: formSubPath(), date: $("fDate").value,
              fav: $("fFav").checked, one: $("fOne").value, body: $("fBody").value, tags: $("fTags").value, image: $("fImage").value,
-             extra: currentExtras() };
+             extra: currentExtras(), photo: { kept: photo.kept, data: photo.data } };
   }
   var sheetBaseline = null, sheetTimer = null;
   function saveSheetNow() {
@@ -1371,6 +1548,7 @@ body.locked .tally, body.locked .bar, body.locked #grid, body.locked #emptySlot,
     fillSubs(f.sub || "");
     $("fDate").value = f.date || ""; $("fFav").checked = !!f.fav; $("fOne").value = f.one || "";
     $("fBody").value = f.body || ""; $("fTags").value = f.tags || ""; $("fImage").value = f.image || "";
+    if (f.photo) setPhoto(f.photo);
     lastTpl = curTemplate(); updateTplBtn(); updatePreview();
   }
   $("form").addEventListener("input", scheduleSheetSave);
@@ -1403,6 +1581,7 @@ body.locked .tally, body.locked .bar, body.locked #grid, body.locked #emptySlot,
     $("fCat").value = it ? it.category || fallbackCat : fallbackCat;
     if (!$("fCat").value) $("fCat").value = CATS[0].id;
     $("fExtra").textContent = ""; extraCache = it ? clone(it.extra || {}) : {};
+    photo = { kept: (it && it.photo) || "", data: "" };
     fillSubs(it ? it.sub : (state.filter === $("fCat").value ? state.sub : ""));
     $("fDate").value = it ? it.watchedAt || "" : today();
     $("fOne").value = it ? it.oneLine || "" : "";
@@ -1425,9 +1604,10 @@ body.locked .tally, body.locked .bar, body.locked #grid, body.locked #emptySlot,
     }
     $("overlay").hidden = false;
     var all = readSheets(); all.open = sheetTarget(); writeSheets(all);
-    setTimeout(function () { (it || draft ? $("fTitle") : $("fUrl")).focus(); }, 0);
+    setTimeout(function () { (it || draft || isMemo($("fCat").value) ? $("fTitle") : $("fUrl")).focus(); }, 0);
   }
   function closeSheet(saved) {
+    if (uploading) return;   /* 사진을 올리는 동안은 닫지 않는다 */
     if (saved === true) dropSheetDraft(sheetTarget());
     else {
       saveSheetNow();
@@ -1450,10 +1630,12 @@ body.locked .tally, body.locked .bar, body.locked #grid, body.locked #emptySlot,
     if (image && !safeUrl(image)) return fail("이미지 주소는 https:// 로 시작해야 해요.", "fImage");
     var prev = null;
     for (var i = 0; i < state.items.length; i++) if (state.items[i].id === state.editing) prev = state.items[i];
+    var memo = isMemo($("fCat").value);
+    if (memo) { url = ""; image = ""; }
     var item = {
       id: prev ? prev.id : Date.now().toString(36),
       title: title, url: url, category: $("fCat").value, watchedAt: $("fDate").value,
-      fav: $("fFav").checked, oneLine: $("fOne").value.trim(), body: stripEmptySections($("fBody").value),
+      fav: memo ? false : $("fFav").checked, oneLine: memo ? "" : $("fOne").value.trim(), body: stripEmptySections($("fBody").value),
       tags: $("fTags").value.split(/[,，#]/).map(function (t) { return t.trim(); }).filter(Boolean).slice(0, 12),
       createdAt: prev ? prev.createdAt : new Date().toISOString()
     };
@@ -1467,9 +1649,32 @@ body.locked .tally, body.locked .bar, body.locked #grid, body.locked #emptySlot,
       Object.keys(prev.extra).forEach(function (k) { if (!shown[k] && !(k in extra)) extra[k] = prev.extra[k]; });
     }
     if (Object.keys(extra).length) item.extra = extra;
-    if (prev) state.items = state.items.map(function (x) { return x.id === prev.id ? item : x; });
-    else state.items.push(item);
-    closeSheet(true); commit();
+    function finish() {
+      if (prev && prev.photo && prev.photo !== item.photo) queueDrop(prev.photo);
+      if (prev) state.items = state.items.map(function (x) { return x.id === prev.id ? item : x; });
+      else state.items.push(item);
+      closeSheet(true); commit();
+    }
+    if (!memo || !photo.data) {
+      if (memo && photo.kept) item.photo = photo.kept;
+      return finish();
+    }
+    /* 새로 고른 사진은 GitHub 의 photos/ 폴더에 먼저 올리고 나서 기록을 저장한다 */
+    if (!gh.cfg || !gh.remote) return fail("사진을 올리려면 먼저 편집 창에서 GitHub에 연결해 주세요. (사진을 빼면 글만 저장할 수 있어요)", "fPhotoPick");
+    var path = "photos/" + item.id + "-" + Date.now().toString(36) + ".jpg", data = photo.data;
+    var saveBtn = $("form").querySelector(".btn.save");
+    uploading = true; saveBtn.disabled = true; $("cancelBtn").disabled = true; saveBtn.textContent = "사진 올리는 중…";
+    err.hidden = true;
+    ghFile(gh.cfg, "PUT", path, { message: "사진 추가: " + title, content: data.split(",")[1], branch: gh.cfg.branch || "main" }).then(function () {
+      photoCache[path] = Promise.resolve(data);
+      item.photo = path;
+      uploading = false; finish();
+    }, function (e) {
+      uploading = false;
+      fail(e && e.status === 403 ? "사진을 올릴 권한이 없어요. 토큰의 Contents 권한이 ‘Read and write’인지 확인해 주세요."
+         : e && e.status === 0 ? "인터넷에 연결되지 않아 사진을 올리지 못했어요. 연결을 확인한 뒤 다시 저장해 주세요."
+         : "사진을 올리지 못했어요. 잠시 뒤 다시 저장해 주세요. (" + (e && e.message || "알 수 없는 오류") + ")", "fPhotoPick");
+    }).then(function () { saveBtn.disabled = false; $("cancelBtn").disabled = false; saveBtn.textContent = "저장"; });
   });
 
   /* ---------- 내보내기 ---------- */
@@ -1483,6 +1688,7 @@ body.locked .tally, body.locked .bar, body.locked #grid, body.locked #emptySlot,
         var t = Array.isArray(c.template) ? c.template : String(c.template).split("\n");
         parts.push(pad + "  \"template\": [\n" + t.map(function (s) { return pad + "    " + JSON.stringify(s); }).join(",\n") + "\n" + pad + "  ]");
       }
+      if (typeof c.kind === "string") parts.push(pad + "  \"kind\": " + JSON.stringify(c.kind));
       if (typeof c.bodyLabel === "string") parts.push(pad + "  \"bodyLabel\": " + JSON.stringify(c.bodyLabel));
       if (Array.isArray(c.fields) && c.fields.length) {
         parts.push(pad + "  \"fields\": [\n" + c.fields.filter(function (f) { return f && f.id; }).map(function (f) {
@@ -1517,6 +1723,7 @@ body.locked .tally, body.locked .bar, body.locked #grid, body.locked #emptySlot,
            "// sub: (선택) 하위 카테고리 목록. 모양은 카테고리와 같고, 하위 카테고리에도 template 을 붙일 수 있어요\n" +
            "// fields: (선택) 이 분류에만 생기는 추가 입력칸. { \"id\": 영문 이름, \"label\": 보이는 이름, \"type\": text·long·number·date }\n" +
            "// bodyLabel: (선택) 후기 칸의 이름 (예: \"기억\", \"감상\")\n" +
+           "// kind: (선택) \"memo\" 로 적으면 끄적임용 분류: 링크·한줄평·즐겨찾기 없이 제목·날짜·내용·태그, 사진은 넣을 때만 보여요\n" +
            "window.CATEGORIES = [\n" + cats + "\n];\n\n" +
            "// ── 기록 ──\n" +
            "window.REVIEWS = " + JSON.stringify(list, null, 2) + ";\n";
