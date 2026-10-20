@@ -1150,12 +1150,16 @@ body.locked .tally, body.locked .bar, body.locked #grid, body.locked #emptySlot,
     var kids = [gen];
     if (thumb) {
       var ytId = youtubeId(it.url);
-      /* 큰 화면에서는 고화질 썸네일을 먼저 시도하고, 없으면(120px 회색 대체 이미지) 기본 화질로 */
-      var src = big && ytId && !safeUrl(it.image || "") ? "https://img.youtube.com/vi/" + ytId + "/maxresdefault.jpg" : thumb;
-      var img = el("img", { src: src, alt: "", loading: big ? "eager" : "lazy", referrerpolicy: "no-referrer" });
-      var fallback = function () { if (img.src !== thumb) img.src = thumb; else img.remove(); };
-      img.addEventListener("error", fallback);
-      img.addEventListener("load", function () { if (img.naturalWidth <= 120 && img.src !== thumb) img.src = thumb; });
+      /* 유튜브 썸네일은 고화질(1280px) → 중간(640px) → 기본(480px) 순서로 시도한다.
+         고화질이 없는 영상은 유튜브가 120px 회색 그림을 대신 주기 때문에, 너무 작게 불러와지면 다음 화질로 넘어간다 */
+      var tries = ytId && !safeUrl(it.image || "")
+        ? ["https://img.youtube.com/vi/" + ytId + "/maxresdefault.jpg", "https://img.youtube.com/vi/" + ytId + "/sddefault.jpg", thumb]
+        : [thumb];
+      var step = 0;
+      var img = el("img", { src: tries[0], alt: "", loading: big ? "eager" : "lazy", referrerpolicy: "no-referrer" });
+      var next = function () { if (step < tries.length - 1) img.src = tries[++step]; else img.remove(); };
+      img.addEventListener("error", next);
+      img.addEventListener("load", function () { if (img.naturalWidth <= 120 && step < tries.length - 1) next(); });
       kids.push(img);
     }
     kids.push(el("div", { class: "label" }, [el("span", { text: fullCatLabel(it) }), yt ? el("span", { text: "YouTube" }) : null]));
