@@ -148,7 +148,7 @@ h1 { font-family: var(--f-display); font-weight: 800; font-size: clamp(36px, 6.5
 .cover .gen { position: absolute; inset: 0; padding: 12px 14px; display: flex; flex-direction: column; justify-content: space-between;
   background-image: repeating-linear-gradient(135deg, rgba(255,255,255,.07) 0 2px, transparent 2px 9px); }
 .cover .glyph { position: absolute; right: -6px; bottom: -30px; font-family: var(--f-display); font-weight: 800; font-size: 140px; line-height: 1; opacity: .2; pointer-events: none; }
-.cover img { position: absolute; inset: 0; width: 100%; height: 100%; object-fit: cover; }
+.cover img, .cover video { position: absolute; inset: 0; width: 100%; height: 100%; object-fit: cover; }
 .cover .label { position: absolute; left: 10px; bottom: 10px; display: flex; gap: 6px; flex-wrap: wrap; }
 .cover .label span, .cover .ex { font-family: var(--f-mono); font-size: 11px; letter-spacing: .06em; background: rgba(10,14,12,.68); color: #F6F4EC; padding: 2px 8px; border-radius: 4px; }
 .cover .ex { position: absolute; top: 10px; right: 10px; font-family: var(--f-body); letter-spacing: 0; }
@@ -265,9 +265,10 @@ a.cover:hover .play, a.cover:focus-visible .play { background: var(--accent-stro
 .cover.photo { background: var(--chip); }
 .reader-photo { background: var(--chip); display: flex; justify-content: center; }
 .reader-photo:not(.ok) { aspect-ratio: 4 / 3; }
-.reader-photo img { width: 100%; height: auto; max-height: 80vh; object-fit: contain; }
+.reader-photo img, .reader-photo video { width: 100%; height: auto; max-height: 80vh; object-fit: contain; display: block; }
+.reader-photo .media-note { margin: auto; padding: 24px; font-size: 14px; color: var(--muted); text-align: center; }
 .photo-pick { border-radius: 6px; overflow: hidden; background: var(--chip); display: flex; justify-content: center; }
-.photo-pick img { width: 100%; max-height: 320px; object-fit: contain; }
+.photo-pick img, .photo-pick video { width: 100%; max-height: 320px; object-fit: contain; display: block; }
 .photo-btns { display: flex; align-items: center; gap: 8px; flex-wrap: wrap; }
 .row2 { display: grid; grid-template-columns: 1fr 1fr; gap: 12px; }
 @media (max-width: 420px) { .row2 { grid-template-columns: 1fr; } }
@@ -412,14 +413,14 @@ body.locked .tally, body.locked .bar, body.locked #grid, body.locked #emptySlot,
     </div>
     <div class="preview" id="fPreview" hidden><img id="fPreviewImg" alt=""></div>
     <div class="field" id="fPhotoWrap" hidden>
-      <span class="lbl">사진 <span class="hint">(선택) 넣으면 카드에 사진이 뜨고, 비우면 글만 보여요</span></span>
-      <div class="photo-pick" id="fPhotoBox" hidden><img id="fPhotoImg" alt="고른 사진 미리보기"></div>
+      <span class="lbl">사진·GIF·동영상 <span class="hint">(선택) 넣으면 카드에 보이고, 비우면 글만 보여요</span></span>
+      <div class="photo-pick" id="fPhotoBox" hidden><img id="fPhotoImg" alt="고른 사진 미리보기"><video id="fPhotoVid" playsinline muted loop autoplay controls hidden></video></div>
       <div class="photo-btns">
-        <button type="button" class="btn small ghost" id="fPhotoPick">사진 고르기</button>
+        <button type="button" class="btn small ghost" id="fPhotoPick">사진·영상 고르기</button>
         <button type="button" class="textbtn" id="fPhotoRemove" hidden>사진 빼기</button>
         <span class="hint" id="fPhotoNote"></span>
       </div>
-      <input type="file" id="fPhotoFile" accept="image/*" hidden>
+      <input type="file" id="fPhotoFile" accept="image/*,video/*" hidden>
     </div>
     <div class="field">
       <label for="fTitle">제목</label>
@@ -785,14 +786,65 @@ body.locked .tally, body.locked .bar, body.locked #grid, body.locked #emptySlot,
      사진은 저장소의 photos/ 폴더에 따로 올리고, 기록에는 "photo": "photos/….jpg" 경로만 적는다.
      비공개 저장소라 그냥 주소로는 안 보이니, 연결된 토큰으로 읽어서 보여준다. */
   var photoCache = {};
+  /* 파일 이름으로 종류를 알아낸다 */
+  function isVideoPath(p) { return /\.(mp4|m4v|mov|webm)$/i.test(p || ""); }
+  function mimeOf(p) {
+    var m = String(p || "").toLowerCase().match(/\.([a-z0-9]+)$/), e = m ? m[1] : "";
+    return { png: "image/png", gif: "image/gif", webp: "image/webp", mp4: "video/mp4", m4v: "video/mp4", mov: "video/quicktime", webm: "video/webm" }[e] || "image/jpeg";
+  }
+  function extOf(type, name) {
+    var t = { "image/jpeg": "jpg", "image/gif": "gif", "image/png": "png", "image/webp": "webp", "video/mp4": "mp4", "video/quicktime": "mov", "video/webm": "webm", "video/x-m4v": "m4v" }[type];
+    if (t) return t;
+    var m = String(name || "").toLowerCase().match(/\.(mp4|m4v|mov|webm|gif|png|jpe?g|webp)$/);
+    return m ? m[1].replace("jpeg", "jpg") : "jpg";
+  }
+  /* 한 번 받은 사진·영상은 이 브라우저에 보관해 두고 다음부터는 다시 받지 않는다 */
+  var MEDIA_CACHE = "august-archive-media";
+  function mediaKey(path) { return location.origin + "/__media/" + (gh.cfg ? gh.cfg.owner + "/" + gh.cfg.repo + "/" : "") + path; }
+  function fromCache(key) {
+    if (!window.caches) return Promise.reject(new Error("no cache"));
+    return caches.open(MEDIA_CACHE).then(function (c) { return c.match(key); }).then(function (r) { if (!r) throw new Error("miss"); return r.blob(); });
+  }
+  function toCache(key, blob) {
+    if (!window.caches) return;
+    caches.open(MEDIA_CACHE).then(function (c) { return c.put(key, new Response(blob)); }).catch(function () {});
+  }
+  function dropCache(key) { if (window.caches) caches.open(MEDIA_CACHE).then(function (c) { return c.delete(key); }).catch(function () {}); }
+  /* 비공개 저장소의 파일을 그대로(원본 바이트로) 받는다. 1MB 가 넘는 GIF·영상도 받을 수 있다 */
+  function ghRaw(cfg, path) {
+    var url = "https://api.github.com/repos/" + encodeURIComponent(cfg.owner) + "/" + encodeURIComponent(cfg.repo) + "/contents/" +
+              String(path).split("/").map(encodeURIComponent).join("/") + "?ref=" + encodeURIComponent(cfg.branch || "main");
+    return fetch(url, { headers: { "Authorization": "Bearer " + cfg.token, "Accept": "application/vnd.github.raw+json", "X-GitHub-Api-Version": "2022-11-28" }, cache: "no-store" })
+      .then(function (r) { if (!r.ok) throw new Error("HTTP " + r.status); return r.blob(); });
+  }
+  function b64ToBlob(b64, type) {
+    var bin = atob(String(b64).replace(/\s/g, "")), bytes = new Uint8Array(bin.length);
+    for (var i = 0; i < bin.length; i++) bytes[i] = bin.charCodeAt(i);
+    return new Blob([bytes], { type: type });
+  }
+  function blobToB64(blob) {
+    return new Promise(function (ok, no) {
+      var fr = new FileReader();
+      fr.onload = function () { ok(String(fr.result).split(",")[1]); };
+      fr.onerror = function () { no(fr.error); };
+      fr.readAsDataURL(blob);
+    });
+  }
   function photoSrc(path) {
     if (photoCache[path]) return photoCache[path];
-    var p = !gh.cfg ? Promise.resolve(path)
-      : ghFile(gh.cfg, "GET", path).then(function (j) {
-          if (j.encoding !== "base64" || !j.content) throw new Error("unreadable");
-          var type = /\.png$/i.test(path) ? "image/png" : /\.webp$/i.test(path) ? "image/webp" : "image/jpeg";
-          return "data:" + type + ";base64," + j.content.replace(/\s/g, "");
-        });
+    var p;
+    if (!gh.cfg) p = Promise.resolve(path);
+    else {
+      var cfg = gh.cfg, key = mediaKey(path), type = mimeOf(path);
+      p = fromCache(key).catch(function () {
+        return ghRaw(cfg, path).catch(function () {
+          return ghFile(cfg, "GET", path).then(function (j) {
+            if (j.encoding !== "base64" || !j.content) throw new Error("unreadable");
+            return b64ToBlob(j.content, type);
+          });
+        }).then(function (blob) { toCache(key, blob); return blob; });
+      }).then(function (blob) { return URL.createObjectURL(new Blob([blob], { type: type })); });
+    }
     p = p.catch(function (e) { delete photoCache[path]; throw e; });
     photoCache[path] = p;
     return p;
@@ -827,7 +879,7 @@ body.locked .tally, body.locked .bar, body.locked #grid, body.locked #emptySlot,
       ghFile(cfg, "GET", path).then(function (j) {
         return ghFile(cfg, "DELETE", path, { message: "사진 삭제: " + path, sha: j.sha, branch: cfg.branch || "main" });
       }).catch(function () {});
-      delete photoCache[path];
+      delete photoCache[path]; dropCache(mediaKey(path));
     });
   }
 
@@ -1175,14 +1227,24 @@ body.locked .tally, body.locked .bar, body.locked #grid, body.locked #emptySlot,
   /* 끄적임: 사진이 있을 때만 사진을 보여주고, 없으면 아무것도 안 그린다 */
   function memoCover(it, big) {
     if (!it.photo) return null;
-    var img = el("img", { alt: "", loading: big ? "eager" : "lazy" });
-    var box;
-    if (big) box = el("div", { class: "reader-photo" }, [img]);
-    else box = el("div", { class: "cover photo" }, [img,
-      el("div", { class: "label" }, [el("span", { text: fullCatLabel(it) })]),
+    var video = isVideoPath(it.photo), media, box;
+    if (video) {
+      /* 카드에서는 GIF 처럼 소리 없이 반복 재생, 크게 보기에서는 재생 버튼·소리 조절도 보인다 */
+      media = el("video", { playsinline: "", loop: "", autoplay: "", muted: "", preload: big ? "auto" : "metadata" });
+      media.muted = true;
+      if (big) media.controls = true;
+    } else media = el("img", { alt: "", loading: big ? "eager" : "lazy" });
+    if (big) box = el("div", { class: "reader-photo" }, [media]);
+    else box = el("div", { class: "cover photo" }, [media,
+      el("div", { class: "label" }, [el("span", { text: fullCatLabel(it) }), video ? el("span", { text: "영상" }) : null]),
       it.example ? el("span", { class: "ex", text: "예시" }) : null]);
-    img.addEventListener("load", function () { box.classList.add("ok"); });
-    photoSrc(it.photo).then(function (s) { img.src = s; }, function () { img.remove(); });
+    media.addEventListener(video ? "loadeddata" : "load", function () { box.classList.add("ok"); });
+    media.addEventListener("error", function () {
+      media.remove();
+      if (big) box.appendChild(el("p", { class: "media-note", text: video ? "이 브라우저에서는 재생할 수 없는 영상이에요. (아이폰 영상은 사파리에서는 재생돼요)" : "사진을 불러오지 못했어요." }));
+    });
+    photoSrc(it.photo).then(function (s) { media.src = s; if (video) { var pr = media.play(); if (pr && pr.catch) pr.catch(function () {}); } },
+                            function () { media.remove(); });
     return box;
   }
 
@@ -1419,33 +1481,63 @@ body.locked .tally, body.locked .bar, body.locked #grid, body.locked #emptySlot,
     $("fBody").placeholder = memo ? "떠오른 생각, 오늘 있었던 일…" : "기억에 남는 장면, 배운 것, 떠오른 생각…";
     updatePreview(); showPhoto();
   }
-  /* 작성 화면의 사진: kept = 이미 올라가 있는 사진 경로, data = 새로 고른 사진 (저장할 때 올린다) */
-  var photo = { kept: "", data: "" }, uploading = false;
-  function setPhoto(p) { photo = { kept: (p && p.kept) || "", data: (p && p.data) || "" }; showPhoto(); }
+  /* 작성 화면의 사진·영상:
+     kept = 이미 올라가 있는 파일 경로, data = 새로 고른 사진·GIF (data: 주소), blob = 새로 고른 영상, type = 종류
+     새로 고른 것은 저장할 때 올린다 */
+  var photo = { kept: "", data: "", blob: null, type: "", name: "" }, uploading = false, previewUrl = "";
+  var GIF_MAX = 15, VIDEO_MAX = 25;   /* MB */
+  function setPhoto(p) {
+    p = p || {};
+    photo = { kept: p.kept || "", data: p.data || "", blob: p.blob || null, type: p.type || "", name: p.name || "" };
+    showPhoto();
+  }
   function showPhoto() {
     if (!photo) return;
-    var has = !!(photo.data || photo.kept), img = $("fPhotoImg");
+    var fresh = !!(photo.data || photo.blob), has = !!(fresh || photo.kept), img = $("fPhotoImg"), vid = $("fPhotoVid");
+    var isVid = fresh ? /^video\//.test(photo.type) : isVideoPath(photo.kept);
     $("fPhotoBox").hidden = !has; $("fPhotoRemove").hidden = !has;
-    $("fPhotoPick").textContent = has ? "다른 사진으로 바꾸기" : "사진 고르기";
-    $("fPhotoNote").textContent = photo.data && !gh.cfg ? "사진은 GitHub에 연결돼 있어야 올라가요." : "";
-    if (photo.data) img.src = photo.data;
+    $("fPhotoRemove").textContent = isVid ? "영상 빼기" : "사진 빼기";
+    $("fPhotoPick").textContent = has ? "다른 사진·영상으로 바꾸기" : "사진·영상 고르기";
+    $("fPhotoNote").textContent = fresh && !gh.cfg ? "사진·영상은 GitHub에 연결돼 있어야 올라가요." : "";
+    img.hidden = isVid; vid.hidden = !isVid;
+    if (previewUrl) { URL.revokeObjectURL(previewUrl); previewUrl = ""; }
+    img.removeAttribute("src"); vid.removeAttribute("src");
+    function put(s) { if (isVid) { vid.src = s; var pr = vid.play(); if (pr && pr.catch) pr.catch(function () {}); } else img.src = s; }
+    if (photo.blob) { previewUrl = URL.createObjectURL(photo.blob); put(previewUrl); }
+    else if (photo.data) put(photo.data);
     else if (photo.kept) {
-      img.removeAttribute("src");
       var want = photo.kept;
-      photoSrc(want).then(function (s) { if (photo.kept === want && !photo.data) img.src = s; }, function () {});
-    } else img.removeAttribute("src");
+      photoSrc(want).then(function (s) { if (photo.kept === want && !photo.data && !photo.blob) put(s); }, function () {});
+    }
+  }
+  function readAsDataUrl(file) {
+    return new Promise(function (ok, no) { var fr = new FileReader(); fr.onload = function () { ok(String(fr.result)); }; fr.onerror = function () { no(fr.error); }; fr.readAsDataURL(file); });
   }
   $("fPhotoPick").addEventListener("click", function () { $("fPhotoFile").click(); });
   $("fPhotoRemove").addEventListener("click", function () { setPhoto({}); scheduleSheetSave(); });
   $("fPhotoFile").addEventListener("change", function () {
     var file = this.files && this.files[0]; this.value = "";
     if (!file) return;
-    $("fPhotoNote").textContent = "사진을 준비하는 중…";
-    shrinkPhoto(file).then(function (d) {
-      setPhoto({ kept: photo.kept, data: d }); scheduleSheetSave();
-    }, function () {
-      $("fPhotoNote").textContent = "이 사진은 읽을 수 없어요. JPG나 PNG 사진으로 다시 골라 주세요.";
-    });
+    var mb = file.size / 1048576, type = file.type || mimeOf(file.name), note = $("fPhotoNote");
+    var keep = photo.kept;
+    if (/^video\//.test(type) || isVideoPath(file.name)) {
+      if (!/^video\//.test(type)) type = mimeOf(file.name);
+      if (mb > VIDEO_MAX) { note.textContent = "영상이 너무 커요 (" + mb.toFixed(1) + "MB). " + VIDEO_MAX + "MB 이하로 잘라서 올려 주세요."; return; }
+      setPhoto({ kept: keep, blob: file, type: type, name: file.name }); scheduleSheetSave();
+    } else if (type === "image/gif") {
+      /* GIF 는 줄이면 움직임이 사라지니 그대로 올린다 */
+      if (mb > GIF_MAX) { note.textContent = "GIF가 너무 커요 (" + mb.toFixed(1) + "MB). " + GIF_MAX + "MB 이하로 골라 주세요."; return; }
+      note.textContent = "GIF를 준비하는 중…";
+      readAsDataUrl(file).then(function (d) { setPhoto({ kept: keep, data: d, type: "image/gif", name: file.name }); scheduleSheetSave(); },
+                               function () { note.textContent = "이 GIF는 읽을 수 없어요."; });
+    } else {
+      note.textContent = "사진을 준비하는 중…";
+      shrinkPhoto(file).then(function (d) {
+        setPhoto({ kept: keep, data: d, type: "image/jpeg", name: file.name }); scheduleSheetSave();
+      }, function () {
+        note.textContent = "이 사진은 읽을 수 없어요. JPG나 PNG 사진으로 다시 골라 주세요.";
+      });
+    }
   });
   function updatePreview() {
     if (isMemo($("fCat").value)) { $("fPreview").hidden = true; return; }
@@ -1562,7 +1654,9 @@ body.locked .tally, body.locked .bar, body.locked #grid, body.locked #emptySlot,
   function readForm() {
     return { url: $("fUrl").value, title: $("fTitle").value, cat: $("fCat").value, sub: formSubPath(), date: $("fDate").value,
              fav: $("fFav").checked, one: $("fOne").value, body: $("fBody").value, tags: $("fTags").value, image: $("fImage").value,
-             extra: currentExtras(), photo: { kept: photo.kept, data: photo.data } };
+             extra: currentExtras(),
+             /* 임시 저장에는 작은 사진만 담는다 (큰 GIF·영상은 브라우저 저장 공간을 넘으니 다시 골라야 해요) */
+             photo: { kept: photo.kept, data: photo.data && photo.data.length < 1500000 ? photo.data : "", type: photo.data && photo.data.length < 1500000 ? photo.type : "" } };
   }
   var sheetBaseline = null, sheetTimer = null;
   function saveSheetNow() {
@@ -1701,25 +1795,34 @@ body.locked .tally, body.locked .bar, body.locked #grid, body.locked #emptySlot,
       else state.items.push(item);
       closeSheet(true); commit();
     }
-    if (!memo || !photo.data) {
+    var fresh = !!(photo.data || photo.blob);
+    if (!memo || !fresh) {
       if (memo && photo.kept) item.photo = photo.kept;
       return finish();
     }
-    /* 새로 고른 사진은 GitHub 의 photos/ 폴더에 먼저 올리고 나서 기록을 저장한다 */
-    if (!gh.cfg || !gh.remote) return fail("사진을 올리려면 먼저 편집 창에서 GitHub에 연결해 주세요. (사진을 빼면 글만 저장할 수 있어요)", "fPhotoPick");
-    var path = "photos/" + item.id + "-" + Date.now().toString(36) + ".jpg", data = photo.data;
-    var saveBtn = $("form").querySelector(".btn.save");
-    uploading = true; saveBtn.disabled = true; $("cancelBtn").disabled = true; saveBtn.textContent = "사진 올리는 중…";
+    /* 새로 고른 사진·GIF·영상은 GitHub 의 photos/ 폴더에 먼저 올리고 나서 기록을 저장한다 */
+    if (!gh.cfg || !gh.remote) return fail("사진·영상을 올리려면 먼저 편집 창에서 GitHub에 연결해 주세요. (빼면 글만 저장할 수 있어요)", "fPhotoPick");
+    var type = photo.type || (photo.data ? (photo.data.match(/^data:([^;]+)/) || [])[1] : "") || "image/jpeg";
+    var path = "photos/" + item.id + "-" + Date.now().toString(36) + "." + extOf(type, photo.name);
+    var blob = photo.blob || b64ToBlob(photo.data.split(",")[1], type);
+    var saveBtn = $("form").querySelector(".btn.save"), isVid = /^video\//.test(type);
+    uploading = true; saveBtn.disabled = true; $("cancelBtn").disabled = true;
+    saveBtn.textContent = isVid ? "영상 올리는 중…" : "사진 올리는 중…";
     err.hidden = true;
-    ghFile(gh.cfg, "PUT", path, { message: "사진 추가: " + title, content: data.split(",")[1], branch: gh.cfg.branch || "main" }).then(function () {
-      photoCache[path] = Promise.resolve(data);
+    (photo.data ? Promise.resolve(photo.data.split(",")[1]) : blobToB64(blob)).then(function (b64) {
+      return ghFile(gh.cfg, "PUT", path, { message: (isVid ? "영상 추가: " : "사진 추가: ") + title, content: b64, branch: gh.cfg.branch || "main" });
+    }).then(function () {
+      photoCache[path] = Promise.resolve(URL.createObjectURL(blob));
+      toCache(mediaKey(path), blob);
       item.photo = path;
       uploading = false; finish();
     }, function (e) {
       uploading = false;
-      fail(e && e.status === 403 ? "사진을 올릴 권한이 없어요. 토큰의 Contents 권한이 ‘Read and write’인지 확인해 주세요."
-         : e && e.status === 0 ? "인터넷에 연결되지 않아 사진을 올리지 못했어요. 연결을 확인한 뒤 다시 저장해 주세요."
-         : "사진을 올리지 못했어요. 잠시 뒤 다시 저장해 주세요. (" + (e && e.message || "알 수 없는 오류") + ")", "fPhotoPick");
+      var what = isVid ? "영상" : "사진";
+      fail(e && e.status === 403 ? what + "을 올릴 권한이 없어요. 토큰의 Contents 권한이 ‘Read and write’인지 확인해 주세요."
+         : e && e.status === 0 ? "인터넷에 연결되지 않아 " + what + "을 올리지 못했어요. 연결을 확인한 뒤 다시 저장해 주세요."
+         : e && (e.status === 413 || e.status === 422) ? what + " 파일이 너무 커서 GitHub가 받지 않았어요. 더 작은 파일로 골라 주세요."
+         : what + "을 올리지 못했어요. 잠시 뒤 다시 저장해 주세요. (" + (e && e.message || "알 수 없는 오류") + ")", "fPhotoPick");
     }).then(function () { saveBtn.disabled = false; $("cancelBtn").disabled = false; saveBtn.textContent = "저장"; });
   });
 
