@@ -73,7 +73,7 @@ button { cursor: pointer; }
 h1 { font-family: var(--f-display); font-weight: 800; font-size: clamp(36px, 6.5vw, 58px); line-height: 1.05; margin: 0; letter-spacing: -.035em; text-wrap: balance; }
 .intro { margin: 10px 0 0; color: var(--muted); max-width: 52ch; }
 .tally { display: flex; flex-wrap: wrap; margin: 0; border-top: 1.5px solid var(--ink); border-bottom: 1px solid var(--line); }
-.tally div { flex: 1 1 120px; padding: 10px 14px 10px 0; display: grid; gap: 2px; }
+.tally div { flex: 1 1 0; min-width: 0; padding: 10px 14px 10px 0; display: grid; gap: 2px; }
 .tally div + div { padding-left: 14px; border-left: 1px solid var(--line); }
 .tally dt { font-size: 12px; color: var(--muted); }
 .tally dd { margin: 0; font-family: var(--f-mono); font-size: 22px; font-weight: 700; letter-spacing: -.02em; font-variant-numeric: tabular-nums; }
@@ -336,7 +336,6 @@ body.locked .tally, body.locked .bar, body.locked #grid, body.locked #emptySlot,
       <div><dt>전체 기록</dt><dd id="tTotal">0</dd></div>
       <div><dt>이번 달</dt><dd id="tMonth">0</dd></div>
       <div><dt>즐겨찾기</dt><dd id="tFav">0</dd></div>
-      <div><dt>가장 많이 본</dt><dd id="tTop" class="word">–</dd></div>
     </dl>
   </header>
 
@@ -418,7 +417,7 @@ body.locked .tally, body.locked .bar, body.locked #grid, body.locked #emptySlot,
     </div>
     <div class="preview" id="fPreview" hidden><img id="fPreviewImg" alt=""></div>
     <div class="field" id="fPhotoWrap" hidden>
-      <span class="lbl">사진·GIF·동영상 <span class="hint">(선택) 넣으면 카드에 보이고, 비우면 글만 보여요</span></span>
+      <span class="lbl">사진·GIF·동영상 <span class="hint" id="fPhotoHint">(선택) 넣으면 카드에 보이고, 비우면 글만 보여요</span></span>
       <div class="photo-pick" id="fPhotoBox" hidden><img id="fPhotoImg" alt="고른 사진 미리보기"><video id="fPhotoVid" playsinline muted loop autoplay controls hidden></video></div>
       <div class="photo-btns">
         <button type="button" class="btn small ghost" id="fPhotoPick">사진·영상 고르기</button>
@@ -1057,10 +1056,6 @@ body.locked .tally, body.locked .bar, body.locked #grid, body.locked #emptySlot,
     $("tTotal").textContent = src.length;
     $("tMonth").textContent = src.filter(function (i) { return (i.watchedAt || i.createdAt || "").slice(0, 7) === ym; }).length;
     $("tFav").textContent = src.filter(function (i) { return i.fav; }).length;
-    /* ‘가장 많이 본’에는 끄적임(메모)은 세지 않는다 */
-    var counts = {}; src.forEach(function (i) { if (!isMemo(i.category)) counts[i.category] = (counts[i.category] || 0) + 1; });
-    var top = Object.keys(counts).sort(function (a, b) { return counts[b] - counts[a]; })[0];
-    $("tTop").textContent = top ? catLabel(top) : "–";
   }
 
   function renderChips() {
@@ -1196,7 +1191,7 @@ body.locked .tally, body.locked .bar, body.locked #grid, body.locked #emptySlot,
   }
 
   function cover(it, big) {
-    if (isMemo(it.category)) return memoCover(it, big);
+    if (isMemo(it.category) || it.photo) return memoCover(it, big);   /* 직접 올린 사진·영상이 있으면 그게 커버 */
     var url = safeUrl(it.url || "");
     var thumb = thumbFor(it);
     var yt = !!youtubeId(it.url);
@@ -1229,7 +1224,7 @@ body.locked .tally, body.locked .bar, body.locked #grid, body.locked #emptySlot,
     return el("div", { class: "cover" + (big ? " big" : "") }, kids);
   }
 
-  /* 끄적임: 사진이 있을 때만 사진을 보여주고, 없으면 아무것도 안 그린다 */
+  /* 직접 올린 사진·GIF·영상 커버. 끄적임은 사진이 있을 때만 보여주고, 없으면 아무것도 안 그린다 */
   function memoCover(it, big) {
     if (!it.photo) return null;
     var video = isVideoPath(it.photo), media, box;
@@ -1241,8 +1236,9 @@ body.locked .tally, body.locked .bar, body.locked #grid, body.locked #emptySlot,
     } else media = el("img", { alt: "", loading: big ? "eager" : "lazy" });
     if (big) box = el("div", { class: "reader-photo" }, [media]);
     else box = el("div", { class: "cover photo" }, [media,
-      el("div", { class: "label" }, [el("span", { text: fullCatLabel(it) })]),
-      it.example ? el("span", { class: "ex", text: "예시" }) : null]);
+      el("div", { class: "label" }, [el("span", { text: fullCatLabel(it) }), youtubeId(it.url) ? el("span", { text: "YouTube" }) : null]),
+      it.example ? el("span", { class: "ex", text: "예시" }) : null,
+      it.fav && !isMemo(it.category) ? el("span", { class: "favbadge", "aria-label": "즐겨찾기", text: "★" }) : null]);
     media.addEventListener(video ? "loadeddata" : "load", function () { box.classList.add("ok"); });
     media.addEventListener("error", function () {
       media.remove();
@@ -1312,7 +1308,7 @@ body.locked .tally, body.locked .bar, body.locked #grid, body.locked #emptySlot,
       return el("button", { type: "button", class: "tag", text: "#" + t, onclick: function () { state.tag = t; render(); } });
     })));
     kids.push(el("div", { class: "actions" }, [
-      url ? el("a", { class: "link", href: url, target: "_blank", rel: "noopener noreferrer", text: youtubeId(url) ? "▶ 유튜브에서 보기" : "보러 가기 ↗" }) : null,
+      url ? el("a", { class: "link", href: url, target: "_blank", rel: "noopener noreferrer", text: "링크 ↗" }) : null,
       el("span", { class: "spacer" }),
       el("button", { type: "button", class: "textbtn", text: "크게 보기", onclick: function () { openReader(it.id); } }),
       state.edit ? el("button", { type: "button", class: "textbtn", text: "수정", onclick: function () { openSheet(it); } }) : null,
@@ -1402,7 +1398,7 @@ body.locked .tally, body.locked .bar, body.locked #grid, body.locked #emptySlot,
       return el("button", { type: "button", class: "tag", text: "#" + t, onclick: function () { state.tag = t; closeReader(); render(); } });
     })));
     if (url || state.edit) inner.appendChild(el("div", { class: "actions" }, [
-      url ? el("a", { class: "btn small", href: url, target: "_blank", rel: "noopener noreferrer", text: youtubeId(url) ? "▶ 유튜브에서 보기" : "보러 가기 ↗" }) : null,
+      url ? el("a", { class: "btn small", href: url, target: "_blank", rel: "noopener noreferrer", text: "링크 ↗" }) : null,
       el("span", { class: "spacer" }),
       state.edit && !memo ? favControl(it) : null,
       state.edit ? el("button", { type: "button", class: "btn small ghost", text: "수정", onclick: function () { openSheet(it); } }) : null
@@ -1483,7 +1479,9 @@ body.locked .tally, body.locked .bar, body.locked #grid, body.locked #emptySlot,
     $("fOne").closest(".field").hidden = memo;
     $("fImage").closest(".field").hidden = memo;
     $("fFav").closest("label").hidden = memo;
-    $("fPhotoWrap").hidden = !memo;
+    /* 사진·GIF·영상 칸은 모든 분류에 있다. 끄적임은 안 넣으면 글만, 다른 분류는 안 넣으면 커버 링크·유튜브 썸네일이 쓰인다 */
+    $("fPhotoWrap").hidden = false;
+    $("fPhotoHint").textContent = memo ? "(선택) 넣으면 카드에 보이고, 비우면 글만 보여요" : "(선택) 넣으면 커버 링크·유튜브 썸네일 대신 이 사진이 카드에 보여요";
     $("fTitle").placeholder = memo ? "메모 제목" : "영상 제목, 노래 제목, 책 제목";
     $("fBody").placeholder = memo ? "떠오른 생각, 오늘 있었던 일…" : "기억에 남는 장면, 배운 것, 떠오른 생각…";
     updatePreview(); showPhoto();
@@ -1503,6 +1501,7 @@ body.locked .tally, body.locked .bar, body.locked #grid, body.locked #emptySlot,
     var fresh = !!(photo.data || photo.blob), has = !!(fresh || photo.kept), img = $("fPhotoImg"), vid = $("fPhotoVid");
     var isVid = fresh ? /^video\//.test(photo.type) : isVideoPath(photo.kept);
     $("fPhotoBox").hidden = !has; $("fPhotoRemove").hidden = !has;
+    if (!$("fPhotoWrap").hidden) updatePreview();
     $("fPhotoRemove").textContent = isVid ? "영상 빼기" : "사진 빼기";
     $("fPhotoPick").textContent = has ? "다른 사진·영상으로 바꾸기" : "사진·영상 고르기";
     $("fPhotoNote").textContent = fresh && !gh.cfg ? "사진·영상은 GitHub에 연결돼 있어야 올라가요." : "";
@@ -1547,7 +1546,8 @@ body.locked .tally, body.locked .bar, body.locked #grid, body.locked #emptySlot,
     }
   });
   function updatePreview() {
-    if (isMemo($("fCat").value)) { $("fPreview").hidden = true; return; }
+    /* 끄적임이거나, 직접 고른 사진이 있으면 (사진이 먼저 쓰이니) 썸네일 미리보기는 숨긴다 */
+    if (isMemo($("fCat").value) || (photo && (photo.data || photo.blob || photo.kept))) { $("fPreview").hidden = true; return; }
     var t = thumbFor({ url: $("fUrl").value.trim(), image: $("fImage").value.trim() });
     $("fPreview").hidden = !t;
     if (t) $("fPreviewImg").src = t;
@@ -1803,12 +1803,12 @@ body.locked .tally, body.locked .bar, body.locked #grid, body.locked #emptySlot,
       closeSheet(true); commit();
     }
     var fresh = !!(photo.data || photo.blob);
-    if (!memo || !fresh) {
-      if (memo && photo.kept) item.photo = photo.kept;
+    if (!fresh) {
+      if (photo.kept) item.photo = photo.kept;
       return finish();
     }
     /* 새로 고른 사진·GIF·영상은 GitHub 의 photos/ 폴더에 먼저 올리고 나서 기록을 저장한다 */
-    if (!gh.cfg || !gh.remote) return fail("사진·영상을 올리려면 먼저 편집 창에서 GitHub에 연결해 주세요. (빼면 글만 저장할 수 있어요)", "fPhotoPick");
+    if (!gh.cfg || !gh.remote) return fail("사진·영상을 올리려면 먼저 편집 창에서 GitHub에 연결해 주세요. (빼면 사진·영상 없이 저장할 수 있어요)", "fPhotoPick");
     var type = photo.type || (photo.data ? (photo.data.match(/^data:([^;]+)/) || [])[1] : "") || "image/jpeg";
     var path = "photos/" + item.id + "-" + Date.now().toString(36) + "." + extOf(type, photo.name);
     var blob = photo.blob || b64ToBlob(photo.data.split(",")[1], type);
