@@ -72,12 +72,6 @@ button { cursor: pointer; }
 .eyebrow { font-family: var(--f-mono); font-size: 12px; letter-spacing: .12em; text-transform: uppercase; color: var(--muted); margin: 0 0 6px; }
 h1 { font-family: var(--f-display); font-weight: 800; font-size: clamp(36px, 6.5vw, 58px); line-height: 1.05; margin: 0; letter-spacing: -.035em; text-wrap: balance; }
 .intro { margin: 10px 0 0; color: var(--muted); max-width: 52ch; }
-.tally { display: flex; flex-wrap: wrap; margin: 0; border-top: 1.5px solid var(--ink); border-bottom: 1px solid var(--line); }
-.tally div { flex: 1 1 0; min-width: 0; padding: 10px 14px 10px 0; display: grid; gap: 2px; }
-.tally div + div { padding-left: 14px; border-left: 1px solid var(--line); }
-.tally dt { font-size: 12px; color: var(--muted); }
-.tally dd { margin: 0; font-family: var(--f-mono); font-size: 22px; font-weight: 700; letter-spacing: -.02em; font-variant-numeric: tabular-nums; }
-.tally dd.word { font-family: var(--f-body); font-size: 18px; padding-top: 3px; }
 
 .btn { border: 0; border-radius: 999px; padding: 10px 18px; font-weight: 600; background: var(--accent); color: var(--accent-ink); display: inline-flex; align-items: center; gap: 8px; }
 .btn:hover { filter: brightness(1.06); }
@@ -240,6 +234,7 @@ a.cover:hover .play, a.cover:focus-visible .play { background: var(--accent-stro
 .empty, .notice { background: var(--paper); border: 1px dashed var(--line); border-radius: 8px; padding: 28px 22px; display: grid; gap: 8px; justify-items: start; }
 .empty h2 { font-family: var(--f-display); font-weight: 700; letter-spacing: -.02em; font-size: 26px; margin: 0; }
 .empty p, .notice p { margin: 0; color: var(--muted); max-width: 56ch; }
+.empty.blank { min-height: 150px; }
 .notice { padding: 12px 16px; border-style: solid; }
 
 /* Sheet (add / edit) */
@@ -314,7 +309,7 @@ html.standalone #launch { display: flex; }
 html.launched #launch { display: none; }
 @media (prefers-reduced-motion: reduce) { #launch { transition: none; } }
 /* 잠금 화면: 연결 안내만 보여준다 */
-body.locked .tally, body.locked .bar, body.locked #grid, body.locked #emptySlot, body.locked #addBtn { display: none; }
+body.locked .bar, body.locked #grid, body.locked #emptySlot, body.locked #addBtn { display: none; }
 </style>
 </head>
 <body>
@@ -332,11 +327,6 @@ body.locked .tally, body.locked .bar, body.locked #grid, body.locked #emptySlot,
       </div>
       <button class="btn" id="addBtn" type="button" hidden>+ 새 기록</button>
     </div>
-    <dl class="tally">
-      <div><dt>전체 기록</dt><dd id="tTotal">0</dd></div>
-      <div><dt>이번 달</dt><dd id="tMonth">0</dd></div>
-      <div><dt>즐겨찾기</dt><dd id="tFav">0</dd></div>
-    </dl>
   </header>
 
   <section class="editbar" id="editbar" hidden aria-label="편집 모드">
@@ -408,7 +398,7 @@ body.locked .tally, body.locked .bar, body.locked #grid, body.locked #emptySlot,
   <form class="sheet" id="form" tabindex="-1" novalidate aria-labelledby="formTitle">
     <h2 id="formTitle">새 기록</h2>
     <p class="restore" id="fRestore" hidden>
-      <span id="fRestoreText">임시 저장된 내용을 불러왔어요.</span>
+      <span id="fRestoreText">임시 저장</span>
       <button type="button" class="textbtn" id="fRestoreDiscard">처음부터 쓰기</button>
     </p>
     <div class="field">
@@ -417,7 +407,7 @@ body.locked .tally, body.locked .bar, body.locked #grid, body.locked #emptySlot,
     </div>
     <div class="preview" id="fPreview" hidden><img id="fPreviewImg" alt=""></div>
     <div class="field" id="fPhotoWrap" hidden>
-      <span class="lbl">사진·GIF·동영상 <span class="hint" id="fPhotoHint">(선택) 넣으면 카드에 보이고, 비우면 글만 보여요</span></span>
+      <span class="lbl">사진·GIF·동영상 <span class="hint">(선택)</span></span>
       <div class="photo-pick" id="fPhotoBox" hidden><img id="fPhotoImg" alt="고른 사진 미리보기"><video id="fPhotoVid" playsinline muted loop autoplay controls hidden></video></div>
       <div class="photo-btns">
         <button type="button" class="btn small ghost" id="fPhotoPick">사진·영상 고르기</button>
@@ -1048,16 +1038,6 @@ body.locked .tally, body.locked .bar, body.locked #grid, body.locked #emptySlot,
     return list.slice().sort(by);
   }
 
-  function renderTally() {
-    var pool = state.items.filter(inAll);
-    var mine = pool.filter(function (i) { return !i.example; });
-    var src = mine.length ? mine : pool;
-    var ym = today().slice(0, 7);
-    $("tTotal").textContent = src.length;
-    $("tMonth").textContent = src.filter(function (i) { return (i.watchedAt || i.createdAt || "").slice(0, 7) === ym; }).length;
-    $("tFav").textContent = src.filter(function (i) { return i.fav; }).length;
-  }
-
   function renderChips() {
     var box = $("chips"); box.textContent = "";
     var counts = { all: state.items.filter(inAll).length, fav: 0 };
@@ -1442,7 +1422,7 @@ body.locked .tally, body.locked .bar, body.locked #grid, body.locked #emptySlot,
   function render() {
     var locked = isLocked();
     document.body.classList.toggle("locked", locked);
-    renderTally(); renderChips(); renderEditbar();
+    renderChips(); renderEditbar();
     var status = $("status"); status.textContent = "";
     if (!gh.cfg && fileProblem() === "syntax") {
       var er = window.REVIEWS_ERROR;
@@ -1464,7 +1444,7 @@ body.locked .tally, body.locked .bar, body.locked #grid, body.locked #emptySlot,
         state.edit ? el("button", { type: "button", class: "btn", text: "+ 첫 기록 쓰기", onclick: function () { openSheet(null); } }) : null
       ]));
     } else if (!list.length) {
-      slot.appendChild(el("section", { class: "empty" }, [el("h2", { text: "조건에 맞는 기록이 없어요" }), el("p", { text: "검색어나 분류 필터를 바꿔 보세요." })]));
+      slot.appendChild(el("section", { class: "empty blank", "aria-label": "조건에 맞는 기록이 없어요" }));
     }
     if (state.readerId) renderReader();
     if (!(gh.cfg && gh.status === "loading" && !gh.remote)) hideLaunch();
@@ -1481,7 +1461,6 @@ body.locked .tally, body.locked .bar, body.locked #grid, body.locked #emptySlot,
     $("fFav").closest("label").hidden = memo;
     /* 사진·GIF·영상 칸은 모든 분류에 있다. 끄적임은 안 넣으면 글만, 다른 분류는 안 넣으면 커버 링크·유튜브 썸네일이 쓰인다 */
     $("fPhotoWrap").hidden = false;
-    $("fPhotoHint").textContent = memo ? "(선택) 넣으면 카드에 보이고, 비우면 글만 보여요" : "(선택) 넣으면 커버 링크·유튜브 썸네일 대신 이 사진이 카드에 보여요";
     $("fTitle").placeholder = memo ? "메모 제목" : "영상 제목, 노래 제목, 책 제목";
     $("fBody").placeholder = memo ? "떠오른 생각, 오늘 있었던 일…" : "기억에 남는 장면, 배운 것, 떠오른 생각…";
     updatePreview(); showPhoto();
@@ -1745,8 +1724,8 @@ body.locked .tally, body.locked .bar, body.locked #grid, body.locked #emptySlot,
     if (draft) {
       applyForm(draft.form);
       var d = new Date(draft.savedAt);
-      $("fRestoreText").textContent = "임시 저장된 내용을 불러왔어요 (" + (d.getMonth() + 1) + "월 " + d.getDate() + "일 " +
-        String(d.getHours()).padStart(2, "0") + ":" + String(d.getMinutes()).padStart(2, "0") + ").";
+      $("fRestoreText").textContent = "임시 저장 (" + (d.getMonth() + 1) + "월 " + d.getDate() + "일 " +
+        String(d.getHours()).padStart(2, "0") + ":" + String(d.getMinutes()).padStart(2, "0") + ")";
     }
     $("overlay").hidden = false;
     var all = readSheets(); all.open = sheetTarget(); writeSheets(all);
