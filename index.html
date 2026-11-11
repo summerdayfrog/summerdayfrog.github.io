@@ -259,11 +259,44 @@ a.cover:hover .play, a.cover:focus-visible .play { background: var(--accent-stro
 .card.memo .cover + .body .memo-text { -webkit-line-clamp: 3; }
 .cover.photo { background: var(--chip); }
 .reader-photo { background: var(--chip); display: flex; justify-content: center; }
-.reader-photo:not(.ok) { aspect-ratio: 4 / 3; }
+.reader-photo:not(.ok):not(.multi) { aspect-ratio: 4 / 3; }
+.reader-photo.multi { display: block; background: none; }
 .reader-photo img, .reader-photo video { width: 100%; height: auto; max-height: 80vh; object-fit: contain; display: block; }
 .reader-photo .media-note { margin: auto; padding: 24px; font-size: 14px; color: var(--muted); text-align: center; }
-.photo-pick { border-radius: 6px; overflow: hidden; background: var(--chip); display: flex; justify-content: center; }
-.photo-pick img, .photo-pick video { width: 100%; max-height: 320px; object-fit: contain; display: block; }
+/* 작성 창: 고른 사진·영상 목록 (한 장이면 크게, 여러 장이면 작은 네모로) */
+.photo-list { display: grid; grid-template-columns: repeat(auto-fill, minmax(92px, 1fr)); gap: 8px; }
+.photo-list.one { grid-template-columns: 1fr; }
+.ptile { position: relative; aspect-ratio: 1; border-radius: 6px; overflow: hidden; background: var(--chip); }
+.photo-list.one .ptile { aspect-ratio: auto; display: flex; justify-content: center; }
+.ptile img, .ptile video { width: 100%; height: 100%; object-fit: cover; display: block; }
+.photo-list.one .ptile img, .photo-list.one .ptile video { height: auto; max-height: 320px; object-fit: contain; }
+.ptile-x, .ptile-left { position: absolute; width: 26px; height: 26px; border-radius: 50%; border: 0; padding: 0 0 2px; background: rgba(27,42,58,.62); color: #fff; font-size: 16px; line-height: 1; cursor: pointer; display: grid; place-items: center; }
+.ptile-x { top: 5px; right: 5px; }
+.ptile-left { bottom: 5px; left: 5px; }
+.ptile-no { position: absolute; top: 5px; left: 7px; font-size: 12px; font-weight: 700; color: #fff; text-shadow: 0 1px 3px rgba(0,0,0,.55); }
+
+/* 여러 장 넘겨 보기 (인스타 게시글처럼 옆으로 밀면 넘어간다) */
+.car { position: relative; }
+.cover .car { position: absolute; inset: 0; }
+.car-track { display: flex; height: 100%; overflow-x: auto; overflow-y: hidden; scroll-snap-type: x mandatory; scrollbar-width: none; -webkit-overflow-scrolling: touch; overscroll-behavior-x: contain; }
+.car-track::-webkit-scrollbar { display: none; }
+.car-slide { flex: 0 0 100%; position: relative; overflow: hidden; scroll-snap-align: center; scroll-snap-stop: always; }
+.car.big .car-track { aspect-ratio: 4 / 3; max-height: 80vh; background: var(--chip); }
+.reader-photo .car-slide img, .reader-photo .car-slide video { position: absolute; inset: 0; width: 100%; height: 100%; max-height: none; object-fit: contain; }
+.car-nav { position: absolute; top: 50%; transform: translateY(-50%); z-index: 3; width: 30px; height: 30px; border-radius: 50%; border: 0; padding: 0 0 3px; background: rgba(255,255,255,.88); color: #1B2A3A; font-size: 22px; line-height: 1; display: grid; place-items: center; cursor: pointer; box-shadow: 0 1px 4px rgba(0,0,0,.22); opacity: 0; transition: opacity .15s; }
+.car-nav.prev { left: 10px; } .car-nav.next { right: 10px; }
+.car:hover .car-nav, .car-nav:focus-visible { opacity: 1; }
+.car-nav[hidden] { display: none; }
+@media (hover: none) { .car-nav { display: none; } }
+.car-count { position: absolute; top: 10px; right: 10px; z-index: 3; padding: 3px 9px; border-radius: 999px; background: rgba(27,42,58,.62); color: #fff; font-size: 11.5px; font-variant-numeric: tabular-nums; pointer-events: none; }
+.car-dots { display: flex; justify-content: center; gap: 4px; }
+.cover .car-dots { position: absolute; left: 0; right: 0; bottom: 10px; z-index: 3; pointer-events: none; }
+.car-dot { width: 6px; height: 6px; border-radius: 50%; background: rgba(255,255,255,.55); transition: background .15s; }
+.car-dot.on { background: #fff; }
+.car-wrap { width: 100%; }
+.car-wrap > .car-dots { padding: 10px 0 0; }
+.car-wrap > .car-dots .car-dot { background: var(--line); }
+.car-wrap > .car-dots .car-dot.on { background: var(--accent-strong); }
 .photo-btns { display: flex; align-items: center; gap: 8px; flex-wrap: wrap; }
 .row2 { display: grid; grid-template-columns: minmax(0, 1fr) minmax(0, 1fr); gap: 12px; }
 /* 아이패드·아이폰 사파리의 날짜 칸은 기본 폭·높이가 제멋대로라, 다른 칸과 똑같이 맞춘다 */
@@ -408,10 +441,9 @@ body.locked .bar, body.locked #grid, body.locked #emptySlot, body.locked #addBtn
     <div class="preview" id="fPreview" hidden><img id="fPreviewImg" alt=""></div>
     <div class="field" id="fPhotoWrap" hidden>
       <span class="lbl">사진·GIF·동영상 <span class="hint">(선택)</span></span>
-      <div class="photo-pick" id="fPhotoBox" hidden><img id="fPhotoImg" alt="고른 사진 미리보기"><video id="fPhotoVid" playsinline muted loop autoplay controls hidden></video></div>
+      <div class="photo-list" id="fPhotoList" hidden></div>
       <div class="photo-btns">
         <button type="button" class="btn small ghost" id="fPhotoPick">사진·영상 고르기</button>
-        <button type="button" class="textbtn" id="fPhotoRemove" hidden>사진 빼기</button>
         <span class="hint" id="fPhotoNote"></span>
       </div>
       <input type="file" id="fPhotoFile" accept="image/*,video/*" hidden>
@@ -497,6 +529,13 @@ body.locked .bar, body.locked #grid, body.locked #emptySlot, body.locked #addBtn
   function catOf(id) { for (var i = 0; i < CATS.length; i++) if (CATS[i].id === id) return CATS[i]; return null; }
   /* "kind": "memo" 인 카테고리는 끄적임용: 링크·한줄평·즐겨찾기 없이 제목·날짜·내용·태그 + 사진(선택) */
   function isMemo(id) { var c = catOf(id); return !!(c && c.kind === "memo"); }
+  /* 사진을 여러 장 넣고 옆으로 넘겨 볼 수 있는 분류: 끄적임(메모)과 기타 */
+  function isMulti(id) { return isMemo(id) || id === "etc"; }
+  /* 기록에 붙은 사진·영상 경로 목록. 여러 장이면 "photos": [...], 한 장이면 "photo" 하나 (첫 장은 늘 "photo" 에도 적어 둔다) */
+  function photosOf(it) {
+    if (it && it.photos && it.photos.length) return it.photos.slice();
+    return it && it.photo ? [it.photo] : [];
+  }
   /* 하위 카테고리는 몇 단계든 "sub" 안에 "sub" 를 넣어 만든다.
      기록에는 경로를 "lecture/math" 처럼 / 로 이어서 저장한다. */
   function childrenOf(node) { return node && Array.isArray(node.sub) ? node.sub.filter(function (s) { return s && s.id && s.label; }) : []; }
@@ -869,7 +908,7 @@ body.locked .bar, body.locked #grid, body.locked #emptySlot, body.locked #addBtn
     if (!gh.cfg || !dropQueue.length) return;
     var cfg = gh.cfg;
     dropQueue.splice(0).forEach(function (path) {
-      if (state.items.some(function (x) { return x.photo === path; })) return;
+      if (state.items.some(function (x) { return photosOf(x).indexOf(path) >= 0; })) return;
       ghFile(cfg, "GET", path).then(function (j) {
         return ghFile(cfg, "DELETE", path, { message: "사진 삭제: " + path, sha: j.sha, branch: cfg.branch || "main" });
       }).catch(function () {});
@@ -1204,28 +1243,89 @@ body.locked .bar, body.locked #grid, body.locked #emptySlot, body.locked #addBtn
     return el("div", { class: "cover" + (big ? " big" : "") }, kids);
   }
 
-  /* 직접 올린 사진·GIF·영상 커버. 끄적임은 사진이 있을 때만 보여주고, 없으면 아무것도 안 그린다 */
-  function memoCover(it, big) {
-    if (!it.photo) return null;
-    var video = isVideoPath(it.photo), media, box;
+  /* 사진·GIF·영상 하나를 그린다. 카드에서는 영상이 소리 없이 반복 재생, 크게 보기에서는 재생 버튼·소리 조절도 보인다 */
+  function mediaEl(path, big) {
+    var video = isVideoPath(path), media;
     if (video) {
-      /* 카드에서는 GIF 처럼 소리 없이 반복 재생, 크게 보기에서는 재생 버튼·소리 조절도 보인다 */
       media = el("video", { playsinline: "", loop: "", autoplay: "", muted: "", preload: big ? "auto" : "metadata" });
       media.muted = true;
       if (big) media.controls = true;
-    } else media = el("img", { alt: "", loading: big ? "eager" : "lazy" });
-    if (big) box = el("div", { class: "reader-photo" }, [media]);
-    else box = el("div", { class: "cover photo" }, [media,
+    } else media = el("img", { alt: "", loading: big ? "eager" : "lazy", draggable: "false" });
+    media.addEventListener("error", function () {
+      var holder = media.parentNode; media.remove();
+      if (big && holder) holder.appendChild(el("p", { class: "media-note", text: video ? "이 브라우저에서는 재생할 수 없는 영상이에요. (아이폰 영상은 사파리에서는 재생돼요)" : "사진을 불러오지 못했어요." }));
+    });
+    photoSrc(path).then(function (s) { media.src = s; if (video && media.autoplay) { var pr = media.play(); if (pr && pr.catch) pr.catch(function () {}); } },
+                        function () { media.remove(); });
+    return media;
+  }
+
+  /* 여러 장을 옆으로 넘겨 보는 상자. 손가락으로 밀거나(휴대폰·아이패드), 화살표 버튼(컴퓨터)으로 넘긴다 */
+  function carousel(paths, big) {
+    var n = paths.length, cur = 0;
+    var track = el("div", { class: "car-track" });
+    var dots = el("div", { class: "car-dots", "aria-hidden": "true" });
+    var medias = paths.map(function (p, k) {
+      var m = mediaEl(p, big);
+      if (m.tagName === "VIDEO") {
+        m.autoplay = false; m.removeAttribute("autoplay");
+        m.addEventListener("loadeddata", function () { if (k === cur && !big) { var pr = m.play(); if (pr && pr.catch) pr.catch(function () {}); } });
+      }
+      track.appendChild(el("div", { class: "car-slide" }, [m]));
+      dots.appendChild(el("span", { class: "car-dot" }));
+      return m;
+    });
+    var count = el("span", { class: "car-count", text: "1/" + n });
+    var prev = el("button", { type: "button", class: "car-nav prev", "aria-label": "이전 사진", text: "‹" });
+    var next = el("button", { type: "button", class: "car-nav next", "aria-label": "다음 사진", text: "›" });
+    function go(i) {
+      i = Math.max(0, Math.min(n - 1, i));
+      track.scrollTo({ left: i * track.clientWidth, behavior: "smooth" });
+    }
+    prev.addEventListener("click", function (e) { e.stopPropagation(); go(cur - 1); });
+    next.addEventListener("click", function (e) { e.stopPropagation(); go(cur + 1); });
+    function update() {
+      var w = track.clientWidth || 1, i = Math.round(track.scrollLeft / w);
+      i = Math.max(0, Math.min(n - 1, i));
+      var changed = i !== cur; cur = i;
+      Array.prototype.forEach.call(dots.children, function (d, k) { d.classList.toggle("on", k === i); });
+      count.textContent = (i + 1) + "/" + n;
+      prev.hidden = i === 0; next.hidden = i === n - 1;
+      /* 지금 보이는 영상만 재생하고 나머지는 멈춘다 */
+      if (changed || !update.done) medias.forEach(function (m, k) {
+        if (m.tagName !== "VIDEO") return;
+        if (k === i && !big) { if (m.src) { var pr = m.play(); if (pr && pr.catch) pr.catch(function () {}); } }
+        else m.pause();
+      });
+      update.done = true;
+    }
+    var raf = 0;
+    track.addEventListener("scroll", function () { if (!raf) raf = requestAnimationFrame(function () { raf = 0; update(); }); }, { passive: true });
+    /* 크게 보기에서는 첫 장의 비율에 맞춰 상자 높이를 정한다 (인스타처럼) */
+    if (big) {
+      var first = medias[0];
+      first.addEventListener(first.tagName === "VIDEO" ? "loadedmetadata" : "load", function () {
+        var w = first.videoWidth || first.naturalWidth, hh = first.videoHeight || first.naturalHeight;
+        if (w && hh) track.style.aspectRatio = Math.max(0.5, Math.min(2, w / hh)) + "";
+      });
+    }
+    var car = el("div", { class: "car" + (big ? " big" : "") }, [track, prev, next, count, big ? null : dots]);
+    car.carGo = function (dir) { var t = cur + dir; if (t < 0 || t >= n) return false; go(t); return true; };
+    update();
+    return big ? el("div", { class: "car-wrap" }, [car, dots]) : car;
+  }
+
+  /* 직접 올린 사진·GIF·영상 커버. 여러 장이면 옆으로 넘겨 본다. 끄적임은 사진이 없으면 아무것도 안 그린다 */
+  function memoCover(it, big) {
+    var paths = photosOf(it);
+    if (!paths.length) return null;
+    var multi = paths.length > 1, inner = multi ? carousel(paths, big) : mediaEl(paths[0], big), box;
+    if (big) box = el("div", { class: "reader-photo" + (multi ? " multi ok" : "") }, [inner]);
+    else box = el("div", { class: "cover photo" }, [inner,
       el("div", { class: "label" }, [el("span", { text: fullCatLabel(it) }), youtubeId(it.url) ? el("span", { text: "YouTube" }) : null]),
       it.example ? el("span", { class: "ex", text: "예시" }) : null,
       it.fav && !isMemo(it.category) ? el("span", { class: "favbadge", "aria-label": "즐겨찾기", text: "★" }) : null]);
-    media.addEventListener(video ? "loadeddata" : "load", function () { box.classList.add("ok"); });
-    media.addEventListener("error", function () {
-      media.remove();
-      if (big) box.appendChild(el("p", { class: "media-note", text: video ? "이 브라우저에서는 재생할 수 없는 영상이에요. (아이폰 영상은 사파리에서는 재생돼요)" : "사진을 불러오지 못했어요." }));
-    });
-    photoSrc(it.photo).then(function (s) { media.src = s; if (video) { var pr = media.play(); if (pr && pr.catch) pr.catch(function () {}); } },
-                            function () { media.remove(); });
+    if (!multi) inner.addEventListener(isVideoPath(paths[0]) ? "loadeddata" : "load", function () { box.classList.add("ok"); });
     return box;
   }
 
@@ -1249,7 +1349,7 @@ body.locked .bar, body.locked #grid, body.locked #emptySlot, body.locked #addBtn
     if (state.confirmId === it.id) kids.push(el("div", { class: "confirm" }, [
       "이 기록을 지울까요?", el("span", { class: "spacer" }),
       el("button", { type: "button", class: "btn small danger", text: "지우기", onclick: function () {
-        queueDrop(it.photo);
+        photosOf(it).forEach(queueDrop);
         state.items = state.items.filter(function (i) { return i.id !== it.id; }); dropSheetDraft(it.id); commit(); } }),
       el("button", { type: "button", class: "btn small ghost", text: "취소", onclick: function () { state.confirmId = null; render(); } })
     ]));
@@ -1297,7 +1397,7 @@ body.locked .bar, body.locked #grid, body.locked #emptySlot, body.locked #addBtn
     if (state.confirmId === it.id) kids.push(el("div", { class: "confirm" }, [
       "이 기록을 지울까요?", el("span", { class: "spacer" }),
       el("button", { type: "button", class: "btn small danger", text: "지우기", onclick: function () {
-        queueDrop(it.photo);
+        photosOf(it).forEach(queueDrop);
         state.items = state.items.filter(function (i) { return i.id !== it.id; }); dropSheetDraft(it.id); commit(); } }),
       el("button", { type: "button", class: "btn small ghost", text: "취소", onclick: function () { state.confirmId = null; render(); } })
     ]));
@@ -1391,8 +1491,12 @@ body.locked .bar, body.locked #grid, body.locked #emptySlot, body.locked #addBtn
   document.addEventListener("keydown", function (e) {
     if (!$("overlay").hidden || $("reader").hidden) return;
     if (e.key === "Escape") closeReader();
-    else if (e.key === "ArrowLeft") stepReader(-1);
-    else if (e.key === "ArrowRight") stepReader(1);
+    else if (e.key === "ArrowLeft" || e.key === "ArrowRight") {
+      /* 사진이 여러 장이면 화살표로 먼저 사진을 넘기고, 끝에 닿으면 이전·다음 기록으로 */
+      var dir = e.key === "ArrowLeft" ? -1 : 1, car = $("readerPanel").querySelector(".car");
+      if (car && car.carGo && car.carGo(dir)) return;
+      stepReader(dir);
+    }
   });
 
   /* 카드를 줄마다 위에서부터 빈틈없이 쌓는다. 줄 수는 화면 너비로 정한다 (카드 한 장은 최소 300px) */
@@ -1463,70 +1567,100 @@ body.locked .bar, body.locked #grid, body.locked #emptySlot, body.locked #addBtn
     $("fPhotoWrap").hidden = false;
     $("fTitle").placeholder = memo ? "메모 제목" : "영상 제목, 노래 제목, 책 제목";
     $("fBody").placeholder = memo ? "떠오른 생각, 오늘 있었던 일…" : "기억에 남는 장면, 배운 것, 떠오른 생각…";
+    var trimmed = false;
+    if (photos && photos.length > 1 && !isMulti($("fCat").value)) { setPhotos(photos.slice(0, 1)); trimmed = true; }
     updatePreview(); showPhoto();
+    if (trimmed) $("fPhotoNote").textContent = "이 분류에는 사진을 한 장만 넣을 수 있어서 첫 장만 남겼어요.";
   }
-  /* 작성 화면의 사진·영상:
-     kept = 이미 올라가 있는 파일 경로, data = 새로 고른 사진·GIF (data: 주소), blob = 새로 고른 영상, type = 종류
-     새로 고른 것은 저장할 때 올린다 */
-  var photo = { kept: "", data: "", blob: null, type: "", name: "" }, uploading = false, previewUrl = "";
-  var GIF_MAX = 15, VIDEO_MAX = 25;   /* MB */
-  function setPhoto(p) {
-    p = p || {};
-    photo = { kept: p.kept || "", data: p.data || "", blob: p.blob || null, type: p.type || "", name: p.name || "" };
+  /* 작성 화면의 사진·영상 목록. 한 칸은 { kept: 이미 올라가 있는 파일 경로 } 이거나
+     새로 고른 것 { data: 사진·GIF (data: 주소) 또는 blob: 영상, type: 종류, name: 파일 이름 } — 새로 고른 것은 저장할 때 올린다 */
+  var photos = [], uploading = false;
+  var GIF_MAX = 15, VIDEO_MAX = 25, MAX_PHOTOS = 10;   /* MB, MB, 장 */
+  function dropEntryUrl(e) { if (e && e.url) { URL.revokeObjectURL(e.url); e.url = ""; } }
+  function setPhotos(list) {
+    (photos || []).forEach(function (e) { if ((list || []).indexOf(e) < 0) dropEntryUrl(e); });
+    photos = (list || []).filter(function (e) { return e && (e.kept || e.data || e.blob); });
     showPhoto();
   }
+  function entryIsVideo(e) { return e.kept ? isVideoPath(e.kept) : /^video\//.test(e.type || ""); }
+  function entrySrc(e) {
+    if (e.kept) return photoSrc(e.kept);
+    if (e.blob) { if (!e.url) e.url = URL.createObjectURL(e.blob); return Promise.resolve(e.url); }
+    return Promise.resolve(e.data);
+  }
   function showPhoto() {
-    if (!photo) return;
-    var fresh = !!(photo.data || photo.blob), has = !!(fresh || photo.kept), img = $("fPhotoImg"), vid = $("fPhotoVid");
-    var isVid = fresh ? /^video\//.test(photo.type) : isVideoPath(photo.kept);
-    $("fPhotoBox").hidden = !has; $("fPhotoRemove").hidden = !has;
-    if (!$("fPhotoWrap").hidden) updatePreview();
-    $("fPhotoRemove").textContent = isVid ? "영상 빼기" : "사진 빼기";
-    $("fPhotoPick").textContent = has ? "다른 사진·영상으로 바꾸기" : "사진·영상 고르기";
+    if (!photos) return;
+    var multi = isMulti($("fCat").value), list = $("fPhotoList"), n = photos.length;
+    list.hidden = !n; list.className = "photo-list" + (n === 1 ? " one" : "");
+    list.textContent = "";
+    photos.forEach(function (e, i) {
+      var vid = entryIsVideo(e), m;
+      if (vid) { m = el("video", { playsinline: "", muted: "", loop: "", autoplay: "", preload: "metadata" }); m.muted = true; if (n === 1) m.controls = true; }
+      else m = el("img", { alt: "" });
+      entrySrc(e).then(function (s) { m.src = s; if (vid) { var pr = m.play(); if (pr && pr.catch) pr.catch(function () {}); } }, function () {});
+      list.appendChild(el("div", { class: "ptile" }, [m,
+        n > 1 ? el("span", { class: "ptile-no", text: String(i + 1) }) : null,
+        el("button", { type: "button", class: "ptile-x", "aria-label": (vid ? "영상" : "사진") + " 빼기", title: "빼기", text: "×",
+          onclick: function () { dropEntryUrl(photos[i]); photos.splice(i, 1); showPhoto(); scheduleSheetSave(); } }),
+        i > 0 ? el("button", { type: "button", class: "ptile-left", "aria-label": "앞으로 옮기기", title: "앞으로", text: "‹",
+          onclick: function () { var t = photos[i - 1]; photos[i - 1] = photos[i]; photos[i] = t; showPhoto(); scheduleSheetSave(); } }) : null
+      ]));
+    });
+    var pick = $("fPhotoPick");
+    pick.textContent = !n ? "사진·영상 고르기" : multi ? "사진·영상 더 넣기 (" + n + "/" + MAX_PHOTOS + ")" : "다른 사진·영상으로 바꾸기";
+    pick.hidden = multi && n >= MAX_PHOTOS;
+    $("fPhotoFile").multiple = multi;
+    var fresh = photos.some(function (e) { return e.data || e.blob; });
     $("fPhotoNote").textContent = fresh && !gh.cfg ? "사진·영상은 GitHub에 연결돼 있어야 올라가요." : "";
-    img.hidden = isVid; vid.hidden = !isVid;
-    if (previewUrl) { URL.revokeObjectURL(previewUrl); previewUrl = ""; }
-    img.removeAttribute("src"); vid.removeAttribute("src");
-    function put(s) { if (isVid) { vid.src = s; var pr = vid.play(); if (pr && pr.catch) pr.catch(function () {}); } else img.src = s; }
-    if (photo.blob) { previewUrl = URL.createObjectURL(photo.blob); put(previewUrl); }
-    else if (photo.data) put(photo.data);
-    else if (photo.kept) {
-      var want = photo.kept;
-      photoSrc(want).then(function (s) { if (photo.kept === want && !photo.data && !photo.blob) put(s); }, function () {});
-    }
+    if (!$("fPhotoWrap").hidden) updatePreview();
   }
   function readAsDataUrl(file) {
     return new Promise(function (ok, no) { var fr = new FileReader(); fr.onload = function () { ok(String(fr.result)); }; fr.onerror = function () { no(fr.error); }; fr.readAsDataURL(file); });
   }
   $("fPhotoPick").addEventListener("click", function () { $("fPhotoFile").click(); });
-  $("fPhotoRemove").addEventListener("click", function () { setPhoto({}); scheduleSheetSave(); });
-  $("fPhotoFile").addEventListener("change", function () {
-    var file = this.files && this.files[0]; this.value = "";
-    if (!file) return;
-    var mb = file.size / 1048576, type = file.type || mimeOf(file.name), note = $("fPhotoNote");
-    var keep = photo.kept;
+  /* 고른 파일 하나를 올릴 수 있는 모양으로 준비한다 (사진은 줄이고, GIF·영상은 그대로) */
+  function preparePhoto(file) {
+    var mb = file.size / 1048576, type = file.type || mimeOf(file.name);
     if (/^video\//.test(type) || isVideoPath(file.name)) {
       if (!/^video\//.test(type)) type = mimeOf(file.name);
-      if (mb > VIDEO_MAX) { note.textContent = "영상이 너무 커요 (" + mb.toFixed(1) + "MB). " + VIDEO_MAX + "MB 이하로 잘라서 올려 주세요."; return; }
-      setPhoto({ kept: keep, blob: file, type: type, name: file.name }); scheduleSheetSave();
-    } else if (type === "image/gif") {
-      /* GIF 는 줄이면 움직임이 사라지니 그대로 올린다 */
-      if (mb > GIF_MAX) { note.textContent = "GIF가 너무 커요 (" + mb.toFixed(1) + "MB). " + GIF_MAX + "MB 이하로 골라 주세요."; return; }
-      note.textContent = "GIF를 준비하는 중…";
-      readAsDataUrl(file).then(function (d) { setPhoto({ kept: keep, data: d, type: "image/gif", name: file.name }); scheduleSheetSave(); },
-                               function () { note.textContent = "이 GIF는 읽을 수 없어요."; });
-    } else {
-      note.textContent = "사진을 준비하는 중…";
-      shrinkPhoto(file).then(function (d) {
-        setPhoto({ kept: keep, data: d, type: "image/jpeg", name: file.name }); scheduleSheetSave();
-      }, function () {
-        note.textContent = "이 사진은 읽을 수 없어요. JPG나 PNG 사진으로 다시 골라 주세요.";
-      });
+      if (mb > VIDEO_MAX) return Promise.reject(new Error("영상이 너무 커요 (" + mb.toFixed(1) + "MB). " + VIDEO_MAX + "MB 이하로 잘라서 올려 주세요."));
+      return Promise.resolve({ blob: file, type: type, name: file.name });
     }
+    if (type === "image/gif") {
+      /* GIF 는 줄이면 움직임이 사라지니 그대로 올린다 */
+      if (mb > GIF_MAX) return Promise.reject(new Error("GIF가 너무 커요 (" + mb.toFixed(1) + "MB). " + GIF_MAX + "MB 이하로 골라 주세요."));
+      return readAsDataUrl(file).then(function (d) { return { data: d, type: "image/gif", name: file.name }; },
+                                      function () { throw new Error("이 GIF는 읽을 수 없어요."); });
+    }
+    return shrinkPhoto(file).then(function (d) { return { data: d, type: "image/jpeg", name: file.name }; },
+                                  function () { throw new Error("읽을 수 없는 사진이 있어요. JPG나 PNG 사진으로 다시 골라 주세요."); });
+  }
+  $("fPhotoFile").addEventListener("change", function () {
+    var files = Array.prototype.slice.call(this.files || []); this.value = "";
+    if (!files.length) return;
+    var multi = isMulti($("fCat").value), note = $("fPhotoNote"), problems = [];
+    if (!multi) files = files.slice(0, 1);
+    else if (files.length > MAX_PHOTOS - photos.length) {
+      problems.push("한 기록에는 " + MAX_PHOTOS + "개까지 넣을 수 있어서 앞의 " + (MAX_PHOTOS - photos.length) + "개만 넣었어요.");
+      files = files.slice(0, Math.max(0, MAX_PHOTOS - photos.length));
+    }
+    var got = [], chain = Promise.resolve();
+    files.forEach(function (f, k) {
+      chain = chain.then(function () {
+        note.textContent = files.length > 1 ? "준비하는 중… (" + (k + 1) + "/" + files.length + ")" : "준비하는 중…";
+        return preparePhoto(f).then(function (e) { got.push(e); }, function (err) { if (problems.indexOf(err.message) < 0) problems.push(err.message); });
+      });
+    });
+    chain.then(function () {
+      if (got.length) setPhotos(multi ? photos.concat(got) : got);
+      else showPhoto();
+      if (problems.length) note.textContent = problems.join(" ");
+      scheduleSheetSave();
+    });
   });
   function updatePreview() {
     /* 끄적임이거나, 직접 고른 사진이 있으면 (사진이 먼저 쓰이니) 썸네일 미리보기는 숨긴다 */
-    if (isMemo($("fCat").value) || (photo && (photo.data || photo.blob || photo.kept))) { $("fPreview").hidden = true; return; }
+    if (isMemo($("fCat").value) || (photos && photos.length)) { $("fPreview").hidden = true; return; }
     var t = thumbFor({ url: $("fUrl").value.trim(), image: $("fImage").value.trim() });
     $("fPreview").hidden = !t;
     if (t) $("fPreviewImg").src = t;
@@ -1631,18 +1765,31 @@ body.locked .bar, body.locked #grid, body.locked #emptySlot, body.locked #addBtn
     } catch (e) {
       /* 브라우저 저장 공간이 모자라면 새로 고른 사진만 빼고 글은 꼭 남긴다 */
       try {
-        Object.keys(all.drafts || {}).forEach(function (k) { var f = all.drafts[k].form; if (f && f.photo) f.photo.data = ""; });
+        Object.keys(all.drafts || {}).forEach(function (k) {
+          var f = all.drafts[k].form;
+          if (f && f.photos) f.photos = f.photos.filter(function (e) { return e.kept; });
+          if (f && f.photo) f.photo.data = "";
+        });
         localStorage.setItem(SHEET_KEY, JSON.stringify(all));
       } catch (e2) {}
     }
   }
   function sheetTarget() { return state.editing || "new"; }
+  /* 임시 저장에는 이미 올린 사진과 작은 새 사진만 담는다 (큰 GIF·영상은 브라우저 저장 공간을 넘으니 다시 골라야 해요) */
+  function draftPhotos() {
+    var room = 2500000;
+    return (photos || []).map(function (e) {
+      if (e.kept) return { kept: e.kept };
+      if (e.data && e.data.length < room) { room -= e.data.length; return { data: e.data, type: e.type, name: e.name }; }
+      return null;
+    }).filter(Boolean);
+  }
   function readForm() {
     return { url: $("fUrl").value, title: $("fTitle").value, cat: $("fCat").value, sub: formSubPath(), date: $("fDate").value,
              fav: $("fFav").checked, one: $("fOne").value, body: $("fBody").value, tags: $("fTags").value, image: $("fImage").value,
              extra: currentExtras(),
              /* 임시 저장에는 작은 사진만 담는다 (큰 GIF·영상은 브라우저 저장 공간을 넘으니 다시 골라야 해요) */
-             photo: { kept: photo.kept, data: photo.data && photo.data.length < 1500000 ? photo.data : "", type: photo.data && photo.data.length < 1500000 ? photo.type : "" } };
+             photos: draftPhotos() };
   }
   var sheetBaseline = null, sheetTimer = null;
   function saveSheetNow() {
@@ -1673,7 +1820,8 @@ body.locked .bar, body.locked #grid, body.locked #emptySlot, body.locked #addBtn
     fillSubs(f.sub || "");
     $("fDate").value = f.date || ""; $("fFav").checked = !!f.fav; $("fOne").value = f.one || "";
     $("fBody").value = f.body || ""; $("fTags").value = f.tags || ""; $("fImage").value = f.image || "";
-    if (f.photo) setPhoto(f.photo);
+    if (f.photos) setPhotos(f.photos.map(function (e) { return { kept: e.kept || "", data: e.data || "", type: e.type || "", name: e.name || "" }; }));
+    else if (f.photo) setPhotos(f.photo.data ? [{ data: f.photo.data, type: f.photo.type || "" }] : f.photo.kept ? [{ kept: f.photo.kept }] : []);
     lastTpl = curTemplate(); updateTplBtn(); updatePreview();
   }
   $("form").addEventListener("input", scheduleSheetSave);
@@ -1706,7 +1854,8 @@ body.locked .bar, body.locked #grid, body.locked #emptySlot, body.locked #addBtn
     $("fCat").value = it ? it.category || fallbackCat : fallbackCat;
     if (!$("fCat").value) $("fCat").value = CATS[0].id;
     $("fExtra").textContent = ""; extraCache = it ? clone(it.extra || {}) : {};
-    photo = { kept: (it && it.photo) || "", data: "" };
+    (photos || []).forEach(dropEntryUrl);
+    photos = photosOf(it).map(function (p) { return { kept: p }; });
     fillSubs(it ? it.sub : (state.filter === $("fCat").value ? state.sub : ""));
     $("fDate").value = it ? it.watchedAt || "" : today();
     $("fOne").value = it ? it.oneLine || "" : "";
@@ -1776,39 +1925,55 @@ body.locked .bar, body.locked #grid, body.locked #emptySlot, body.locked #addBtn
     }
     if (Object.keys(extra).length) item.extra = extra;
     function finish() {
-      if (prev && prev.photo && prev.photo !== item.photo) queueDrop(prev.photo);
+      /* 빼거나 바꾼 예전 사진 파일은 저장이 끝난 뒤 지운다 */
+      var now = photosOf(item);
+      if (prev) photosOf(prev).forEach(function (p) { if (now.indexOf(p) < 0) queueDrop(p); });
       if (prev) state.items = state.items.map(function (x) { return x.id === prev.id ? item : x; });
       else state.items.push(item);
       closeSheet(true); commit();
     }
-    var fresh = !!(photo.data || photo.blob);
-    if (!fresh) {
-      if (photo.kept) item.photo = photo.kept;
-      return finish();
+    var entries = isMulti(item.category) ? photos.slice() : photos.slice(0, 1);
+    function setPaths() {
+      var paths = entries.map(function (e) { return e.kept; }).filter(Boolean);
+      delete item.photo; delete item.photos;
+      if (paths.length) item.photo = paths[0];
+      if (paths.length > 1) item.photos = paths;
     }
-    /* 새로 고른 사진·GIF·영상은 GitHub 의 photos/ 폴더에 먼저 올리고 나서 기록을 저장한다 */
+    var fresh = entries.filter(function (e) { return !e.kept; });
+    if (!fresh.length) { setPaths(); return finish(); }
+    /* 새로 고른 사진·GIF·영상은 GitHub 의 photos/ 폴더에 하나씩 먼저 올리고 나서 기록을 저장한다 */
     if (!gh.cfg || !gh.remote) return fail("사진·영상을 올리려면 먼저 편집 창에서 GitHub에 연결해 주세요. (빼면 사진·영상 없이 저장할 수 있어요)", "fPhotoPick");
-    var type = photo.type || (photo.data ? (photo.data.match(/^data:([^;]+)/) || [])[1] : "") || "image/jpeg";
-    var path = "photos/" + item.id + "-" + Date.now().toString(36) + "." + extOf(type, photo.name);
-    var blob = photo.blob || b64ToBlob(photo.data.split(",")[1], type);
-    var saveBtn = $("form").querySelector(".btn.save"), isVid = /^video\//.test(type);
+    var saveBtn = $("form").querySelector(".btn.save"), cfg = gh.cfg, done = 0;
     uploading = true; saveBtn.disabled = true; $("cancelBtn").disabled = true;
-    saveBtn.textContent = isVid ? "영상 올리는 중…" : "사진 올리는 중…";
     err.hidden = true;
-    (photo.data ? Promise.resolve(photo.data.split(",")[1]) : blobToB64(blob)).then(function (b64) {
-      return ghFile(gh.cfg, "PUT", path, { message: (isVid ? "영상 추가: " : "사진 추가: ") + title, content: b64, branch: gh.cfg.branch || "main" });
-    }).then(function () {
-      photoCache[path] = Promise.resolve(URL.createObjectURL(blob));
-      toCache(mediaKey(path), blob);
-      item.photo = path;
-      uploading = false; finish();
+    var chain = Promise.resolve();
+    fresh.forEach(function (e) {
+      chain = chain.then(function () {
+        var type = e.type || (e.data ? (e.data.match(/^data:([^;]+)/) || [])[1] : "") || "image/jpeg", isVid = /^video\//.test(type);
+        var path = "photos/" + item.id + "-" + Date.now().toString(36) + "-" + (done + 1) + "." + extOf(type, e.name);
+        var blob = e.blob || b64ToBlob(e.data.split(",")[1], type);
+        saveBtn.textContent = fresh.length > 1 ? "올리는 중… (" + (done + 1) + "/" + fresh.length + ")" : isVid ? "영상 올리는 중…" : "사진 올리는 중…";
+        return (e.data ? Promise.resolve(e.data.split(",")[1]) : blobToB64(blob)).then(function (b64) {
+          return ghFile(cfg, "PUT", path, { message: (isVid ? "영상 추가: " : "사진 추가: ") + title, content: b64, branch: cfg.branch || "main" });
+        }).then(function () {
+          photoCache[path] = Promise.resolve(URL.createObjectURL(blob));
+          toCache(mediaKey(path), blob);
+          /* 올라간 것은 ‘이미 올린 파일’로 바꿔 둔다 (중간에 실패해 다시 저장해도 두 번 올리지 않게) */
+          dropEntryUrl(e); e.kept = path; delete e.data; delete e.blob; done++;
+        });
+      });
+    });
+    chain.then(function () {
+      uploading = false; setPaths(); finish();
     }, function (e) {
       uploading = false;
-      var what = isVid ? "영상" : "사진";
-      fail(e && e.status === 403 ? what + "을 올릴 권한이 없어요. 토큰의 Contents 권한이 ‘Read and write’인지 확인해 주세요."
+      var what = "사진·영상";
+      fail((done ? fresh.length + "개 중 " + done + "개는 올렸어요. " : "") +
+         (e && e.status === 403 ? what + "을 올릴 권한이 없어요. 토큰의 Contents 권한이 ‘Read and write’인지 확인해 주세요."
          : e && e.status === 0 ? "인터넷에 연결되지 않아 " + what + "을 올리지 못했어요. 연결을 확인한 뒤 다시 저장해 주세요."
-         : e && (e.status === 413 || e.status === 422) ? what + " 파일이 너무 커서 GitHub가 받지 않았어요. 더 작은 파일로 골라 주세요."
-         : what + "을 올리지 못했어요. 잠시 뒤 다시 저장해 주세요. (" + (e && e.message || "알 수 없는 오류") + ")", "fPhotoPick");
+         : e && (e.status === 413 || e.status === 422) ? "파일이 너무 커서 GitHub가 받지 않았어요. 더 작은 파일로 골라 주세요."
+         : what + "을 올리지 못했어요. 잠시 뒤 다시 저장해 주세요. (" + (e && e.message || "알 수 없는 오류") + ")"), "fPhotoPick");
+      showPhoto();
     }).then(function () { saveBtn.disabled = false; $("cancelBtn").disabled = false; saveBtn.textContent = "저장"; });
   });
 
